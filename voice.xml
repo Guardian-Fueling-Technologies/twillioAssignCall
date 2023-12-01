@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="woman">Hello! This is a reminder call. This is a reminder to assign the call.</Say>
+    <Dial callerId="+18556258756">
+        <Number>+1234567890</Number>
+    </Dial>
+</Response>

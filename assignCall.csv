@@ -1,0 +1,2 @@
+account_sid,auth_token,assignMessage,tech_phone_number,twilio_number,assigned,message_timestamp,response_timestamp
+xx,xx,"Are you ready to accept this call? If yes, please reply with '1'. If not, reply with '2'.",19046767222,18556258756,0,,
