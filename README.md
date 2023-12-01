@@ -41,7 +41,7 @@ Before using the script, ensure you update the following variables in the code:
 4. Run the script:
 
     ```bash
-    python twillio_assign_call.py
+    python firstcall.py
     ```
 
 ---
