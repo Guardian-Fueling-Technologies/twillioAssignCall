@@ -9,7 +9,6 @@ account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
 client = Client(account_sid, auth_token)
-import streamlit as st
             
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
@@ -25,11 +24,6 @@ def voice():
         return str(resp)
     except Exception as e:
         return f"An error occurred: {str(e)}"
-    
-@app.route('/streamlit')
-def streamlit():
-    st.set_page_config(page_title="My Streamlit App")
-    st.write("Hello, world!")
 
 if __name__ == "__main__":
     app.run(debug=True)
