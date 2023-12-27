@@ -26,4 +26,4 @@ def voice():
         return f"An error occurred: {str(e)}"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(port=8000, host='0.0.0.0')
