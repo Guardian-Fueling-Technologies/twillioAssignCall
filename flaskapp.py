@@ -1,52 +1,29 @@
-from flask import Flask
-from twilio.twiml.voice_response import VoiceResponse, Gather
-from twilio.rest import Client
-import os
+from twilio.twiml.voice_response import Gather, VoiceResponse
+from flask import Flask, request
 
 app = Flask(__name__)
 
-account_sid = os.environ.get("account_sid")
-auth_token = os.environ.get("auth_token")
-
-client = Client(account_sid, auth_token)
-      
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
-    repeat = True  # Initialize repeat as True to enter the loop
     try:
-        while repeat:
-            resp = VoiceResponse()
+        user_input = request.values.get('Digits', None)
 
-            gather = Gather(numDigits=1, timeout=3)
-            gather.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
-            resp.append(gather)
+        resp = VoiceResponse()
 
-            print(str(resp))  # Print the XML representation of the response
+        if user_input == '1':
+            resp.say("You pressed 1. Call accepted.")
+        elif user_input == '2':
+            resp.say("You pressed 2. Call rejected.")
+        elif user_input == '3':
+            resp.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
+            resp.redirect('/voice')
+        else:
+            resp.say("Invalid input. Goodbye.")
 
-            if 'Digits' in request.values:
-                user_input = request.values['Digits']
-                print(f"User pressed: {user_input}")
-                
-                if user_input == '1':
-                    resp.say('You pressed 1. Thank you!')
-                    repeat = False
-                elif user_input == '2':
-                    resp.say('You pressed 2. Rejected!')
-                    repeat = False
-                elif user_input == '3':
-                    resp.say('You pressed 3. Repeating the message.')
-                else:
-                    resp.say('Invalid input. Goodbye!')
-                    repeat = False
-            else:
-                resp.say('We didn\'t receive any input. Goodbye!')
-                repeat = False
+        return str(resp)
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
-    return str(resp)
-
-
-if __name__ == "__main__":
-    app.run(port=8000, host='0.0.0.0')
+if __name__ == '__main__':
+    app.run(debug=True, threaded=True)
