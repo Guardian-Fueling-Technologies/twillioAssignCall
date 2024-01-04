@@ -16,9 +16,10 @@ def voice():
             resp.say("You pressed 2. Call rejected.")
         elif user_input == '3':
             resp.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
-            resp.redirect('/voice')
+            resp.gather(numDigits=1, timeout=3, action='/voice')
         else:
-            resp.say("Invalid input. Goodbye.")
+            resp.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
+            resp.gather(numDigits=1, timeout=3, action='/voice')
 
         return str(resp)
 
