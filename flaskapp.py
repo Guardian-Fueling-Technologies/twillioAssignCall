@@ -1,34 +1,24 @@
-from flask import Flask, request
+from flask import Flask
 from twilio.twiml.voice_response import VoiceResponse, Gather
+from twilio.rest import Client
+import os
 
 app = Flask(__name__)
-
+            
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
-    """Respond to incoming phone calls with a menu of options"""
-    # Start our TwiML response
-    resp = VoiceResponse()
+    try:
+        resp = VoiceResponse()
 
-    if 'Digits' in request.values:
-        choice = request.values['Digits']
+        gather = Gather(num_digits=1)
+        gather.say('To accept the call, press 1. To decline the call, press 2.')
+        resp.append(gather)
 
-        if choice == '1':
-            resp.say('You selected sales. Good for you!')
-            return str(resp)
-        elif choice == '2':
-            resp.say('You need support. We will help!')
-            return str(resp)
-        else:
-            resp.say("Sorry, I don't understand that choice.")
+        resp.redirect('/voice')
 
-    gather = Gather(num_digits=1)
-    gather.say('For sales, press 1. For support, press 2.')
-    resp.append(gather)
-
-    resp.redirect('/voice')
-
-    return str(resp)
-
+        return str(resp)
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0')
