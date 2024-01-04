@@ -7,9 +7,9 @@ app = Flask(__name__)
 def voice():
     try:
         resp = VoiceResponse()
-        resp.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
-        resp.gather(numDigits=1, timeout=3, action='/gather')  # Redirect to /gather after gathering input
-
+        gather = Gather(num_digits=1, timeout=3)
+        gather.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
+        resp.append(gather)
         return str(resp)
 
     except Exception as e:
@@ -25,21 +25,23 @@ def gather():
             
             if choice == '1':
                 resp.say('You pressed 1. Call accepted.')
+                return str(resp)
             elif choice == '2':
                 resp.say('You pressed 2. Call rejected.')
+                return str(resp)
             elif choice == '3':
-                resp.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
-                resp.gather(numDigits=1, timeout=3, action='/gather')  # Continue gathering input
+                resp.redirect('/voice')
             else:
                 resp.say("Invalid input. Goodbye.")
         else:
             # Handle the case where no input is received
-            resp.say("We didn't receive any input. Goodbye.")
+            resp.say("Sorry, I don't understand that choice. Goodbye.")
 
         return str(resp)
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
 
 
 if __name__ == "__main__":
