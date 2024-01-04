@@ -7,7 +7,7 @@ app = Flask(__name__)
 def voice():
     try:
         resp = VoiceResponse()
-        gather = Gather(num_digits=1, timeout=3)
+        gather = Gather(num_digits=1, timeout=3, action='/gather')
         gather.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
         resp.append(gather)
         return str(resp)
@@ -41,8 +41,6 @@ def gather():
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
-
-
 
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0')
