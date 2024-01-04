@@ -9,21 +9,31 @@ account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
 client = Client(account_sid, auth_token)
-            
+      
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
+    repeat = False
     try:
-        resp = VoiceResponse()
+        while(repeat):
+            resp = VoiceResponse()
 
-        gather = Gather(num_digits=1)
-        gather.say('To accept the call, press 1. To decline the call, press 2.')
-        resp.append(gather)
+            gather = Gather(num_digits=1, timeout=3)
+            gather.say('Press 1 to accept, press 2 to reject or press 3 to repeat this message.')
+            resp.append(gather)
 
-        resp.redirect('/voice')
+            resp.redirect('/voice')
+            print(resp)
+            if resp:
+                print(f"User pressed: {resp}")
+                resp.say(f'You pressed {resp}. Thank you!')
+            elif(resp == 3):
+                repeat = True
+            else:
+                resp.say('We didn\'t receive any input. Goodbye!')
 
-        return str(resp)
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
 
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0')
