@@ -12,27 +12,40 @@ client = Client(account_sid, auth_token)
       
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
-    repeat = False
+    repeat = True  # Initialize repeat as True to enter the loop
     try:
-        while(repeat):
+        while repeat:
             resp = VoiceResponse()
 
-            gather = Gather(num_digits=1, timeout=3)
-            gather.say('Press 1 to accept, press 2 to reject or press 3 to repeat this message.')
+            gather = Gather(numDigits=1, timeout=3)
+            gather.say('Press 1 to accept, press 2 to reject, or press 3 to repeat this message.')
             resp.append(gather)
 
-            resp.redirect('/voice')
-            print(resp)
-            if resp:
-                print(f"User pressed: {resp}")
-                resp.say(f'You pressed {resp}. Thank you!')
-            elif(resp == 3):
-                repeat = True
+            print(str(resp))  # Print the XML representation of the response
+
+            if 'Digits' in request.values:
+                user_input = request.values['Digits']
+                print(f"User pressed: {user_input}")
+                
+                if user_input == '1':
+                    resp.say('You pressed 1. Thank you!')
+                    repeat = False
+                elif user_input == '2':
+                    resp.say('You pressed 2. Rejected!')
+                    repeat = False
+                elif user_input == '3':
+                    resp.say('You pressed 3. Repeating the message.')
+                else:
+                    resp.say('Invalid input. Goodbye!')
+                    repeat = False
             else:
                 resp.say('We didn\'t receive any input. Goodbye!')
+                repeat = False
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
+    return str(resp)
 
 
 if __name__ == "__main__":
