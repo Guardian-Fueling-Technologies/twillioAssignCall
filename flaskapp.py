@@ -4,27 +4,9 @@ from twilio.rest import Client
 import os
 
 app = Flask(__name__)
-
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
     """Respond to incoming phone calls with a menu of options"""
-    # Start our TwiML response
-    resp = VoiceResponse()
-
-    # Start our <Gather> verb
-    gather = Gather(num_digits=1, action='/gather')
-    gather.say('For sales, press 1. For support, press 2.')
-    resp.append(gather)
-
-    # If the user doesn't select an option, redirect them into a loop
-    resp.redirect('/voice')
-
-    return str(resp)
-
-
-@app.route('/gather', methods=['GET', 'POST'])
-def gather():
-    """Processes results from the <Gather> prompt in /voice"""
     # Start our TwiML response
     resp = VoiceResponse()
 
@@ -45,10 +27,14 @@ def gather():
             # If the caller didn't choose 1 or 2, apologize and ask them again
             resp.say("Sorry, I don't understand that choice.")
 
-    # If the user didn't choose 1 or 2 (or anything), send them back to /voice
+    # Start our <Gather> verb
+    gather = Gather(num_digits=1)
+    gather.say('For sales, press 1. For support, press 2.')
+    resp.append(gather)
+
+    # If the user doesn't select an option, redirect them into a loop
     resp.redirect('/voice')
 
     return str(resp)
-
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0')
