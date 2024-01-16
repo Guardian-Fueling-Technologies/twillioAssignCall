@@ -13,23 +13,7 @@ def voice():
 
     # Start our <Gather> verb
     gather = Gather(num_digits=1, action='/gather')
-    gather.say('For sales, press 1. For support, press 2.')
-    resp.append(gather)
-
-    # If the user doesn't select an option, redirect them into a loop
-    resp.redirect('/voice')
-
-    return str(resp)
-
-
-@app.route('/gather', methods=['GET', 'POST'])
-def gather():
-    """Processes results from the <Gather> prompt in /voice"""
-    # Start our TwiML response
-    resp = VoiceResponse()
-
-    # If Twilio's request to our app included already gathered digits,
-    # process them
+    gather.say('For sales, press 1. For support, press 2. For again press 3')
     if 'Digits' in request.values:
         # Get which digit the caller chose
         choice = request.values['Digits']
@@ -41,12 +25,12 @@ def gather():
         elif choice == '2':
             resp.say('You need support. We will help!')
             return str(resp)
+        elif choice == '3':
+            resp.say('For sales, press 1. For support, press 2. For again press 3')
+            resp.redirect('/voice')
         else:
             # If the caller didn't choose 1 or 2, apologize and ask them again
             resp.say("Sorry, I don't understand that choice.")
-
-    # If the user didn't choose 1 or 2 (or anything), send them back to /voice
-    resp.redirect('/voice')
 
     return str(resp)
 
