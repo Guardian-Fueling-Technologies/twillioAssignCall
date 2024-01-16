@@ -4,7 +4,7 @@ from twilio.rest import Client
 import os
 
 app = Flask(__name__)
-            
+         
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
     """Respond to incoming phone calls with a menu of options"""
@@ -25,6 +25,7 @@ def voice():
             resp.say('You need support. We will help!')
             return str(resp)
         elif choice == '3':
+            resp.say('You pressed replay voice ')
             resp.redirect('/voice')
         else:
             # If the caller didn't choose 1 or 2, apologize and ask them again
@@ -34,6 +35,7 @@ def voice():
     gather = Gather(num_digits=1)
     gather.say('For sales, press 1. For support, press 2.')
     resp.append(gather)
+
 
     return str(resp)
         
