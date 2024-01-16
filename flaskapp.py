@@ -1,7 +1,5 @@
-from flask import Flask
+from flask import Flask, request
 from twilio.twiml.voice_response import VoiceResponse, Gather
-from twilio.rest import Client
-import os
 
 app = Flask(__name__)
          
