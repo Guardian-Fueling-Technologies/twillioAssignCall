@@ -155,8 +155,5 @@ def voice():
 
     return render_template('html/voice_template.html', chosen_digit=chosen)
 
-if __name__ == '__main__':
-    app.run(debug=True, threaded=True)
-
-# if __name__ == "__main__":
-#     app.run(port=8000, host='0.0.0.0', threaded=True)
+if __name__ == "__main__":
+    app.run(port=8000, host='0.0.0.0', threaded=True)
