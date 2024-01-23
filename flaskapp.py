@@ -125,6 +125,7 @@ def voice():
     """Respond to incoming phone calls with a menu of options"""
     # Start our TwiML response
     resp = VoiceResponse()
+    chosen = None
 
     # If Twilio's request to our app included already gathered digits,
     # process them
@@ -152,7 +153,7 @@ def voice():
     gather.say('To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
 
-    return str(resp)
+    return render_template('html/voice_template.html', chosen_digit=chosen)
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
