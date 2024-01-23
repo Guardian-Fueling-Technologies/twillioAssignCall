@@ -1,0 +1,92 @@
+  .progress {
+    width: 100%;
+    display: table;
+    table-layout: fixed;
+    padding: 0;
+    margin: 0;
+  }
+  .progress__step {
+    display: table-cell;
+    text-align: center;
+    vertical-align: top;
+    position: relative;
+    color: white; /* Set text color to white */
+  }
+  .progress__step::before {
+    content: "";
+    display: block;
+    width: 3em;
+    height: 3em;
+    border-radius: 50%;
+    margin: 0 auto;
+  }
+  .progress__step:not(:first-child)::after {
+    content: "";
+    position: absolute;
+    top: 1.3em;
+    left: -50%;
+    width: 100%;
+    height: .4em;
+    z-index: -1;
+  }
+  
+  .progress--counter .progress__step {
+    counter-increment: step-number;
+    font-weight: bold;
+    line-height: 3em;
+  }
+  .progress--counter .progress__step::before {
+    content: counter(step-number);
+  }
+  
+  /* demo styles 
+  ------------------------------------------------- */
+  body {
+    font: 13px/1.5 Arial;
+    background-color: #0F161E;
+  }
+  h2 {
+    margin-top: 2em;
+  }
+  
+  /* steps before the active step */
+  .progress__step::before, .progress__step::after {
+    background-color: #42FF06;
+    color: #0F161E; /* Set text color to white */
+  }
+  .progress__step::before {
+    background-color: #42FF06;
+    box-shadow: inset 0 0 0 3px #42FF06;
+  }
+  
+  /* steps after the active step */
+  .progress__step--active ~ .progress__step::before {
+    background-color: #6A7173;
+    box-shadow: inset 0 0 0 3px #6A7173;
+    color: white;
+  }
+  .progress__step--active ~ .progress__step::after {
+    background-color: #6A7173;
+    color: white;
+  }
+  
+  /* the active step */
+  .progress__step--active::before {
+    background-color: #0F161E;
+    box-shadow: 0 0 3px 1px #42FF06;
+    color: white;
+  }
+  .progress__step--active {
+    color: #42FF06;
+  }
+
+  /* buttons */
+  .assign-call-button {
+    background-color: #42FF06;
+    color: #0F161E;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

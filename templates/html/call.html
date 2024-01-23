@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main_page.css') }}">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #0F161E;
+            color: white;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #42FF06;
+        }
+
+        h2 {
+            margin-top: 20px;
+            color: #42FF06;
+        }
+
+        .progress-bars {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Main Page</h1>
+    
+    <div id="progress-bars">
+        <h2>Technician Phone: </h2>
+        <ol class="progress">
+            <span class="progress progress--counter">
+                <li class="progress__step progress__step--active">Messaging Technician (TechnicianID)</li>
+                <li class="progress__step">Waiting for Technician to response</li>
+                <li class="progress__step">Calling Technician</li>
+                <li class="progress__step">Waiting for Technician to response</li>
+                <li class="progress__step">Elevating & Calling Manager</li>
+            </span>
+        </ol>
+
+        <div id="progress-bars">
+            <h2>Technician Phone: </h2>
+            <ol class="progress">
+                <span class="progress progress--counter">
+                    <li class="progress__step progress__step--active">Messaging Technician (TechnicianID)</li>
+                    <li class="progress__step">Waiting for Technician to response</li>
+                    <li class="progress__step">Calling Technician</li>
+                    <li class="progress__step">Waiting for Technician to response</li>
+                    <li class="progress__step">Elevating & Calling Manager</li>
+                </span>
+            </ol>
+            <div id="progress-bars">
+                <h2>Technician Phone: or id</h2>
+                <ol class="progress">
+                    <span class="progress progress--counter">
+                        <li class="progress__step">Messaging Technician (TechnicianID)</li>
+                        <li class="progress__step">Waiting for Technician to response</li>
+                        <li class="progress__step progress__step--active">Calling Technician</li>
+                        <li class="progress__step">Waiting for Technician to response</li>
+                        <li class="progress__step">Elevating & Calling Manager</li>
+                    </span>
+                </ol>
+                <div id="progress-bars">
+                    <h2>Technician Phone: dafsf</h2>
+                    <ol class="progress">
+                        <span class="progress progress--counter">
+                            <li class="progress__step">Messaging Technician (TechnicianID)</li>
+                            <li class="progress__step">Waiting for Technician to response</li>
+                            <li class="progress__step">Calling Technician</li>
+                            <li class="progress__step progress__step--active">Waiting for Technician to response</li>
+                            <li class="progress__step">Elevating & Calling Manager</li>
+                        </span>
+                    </ol>
+    
+    </div>
+    <a href="{{ url_for('main_page') }}" class="assign-call-button">Back to Main Page</a>
+</body>
+
+</html>
