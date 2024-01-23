@@ -1,0 +1,3 @@
+account_sid,auth_token,assign_Message,technician_NMBR,manager_NMBR,twilio_NMBR,status,message_timestamp,response_timestamp,calltime,callManagertime,Processed,Technician_ID,LastUpdated
+x,x,"tryoutmessage",19046767222,19046767222,18556258756,0,,,1,2,,,
+x,x,"tryoutmessage",19046767222,19046767222,18556258756,0,,,1,2,,,
