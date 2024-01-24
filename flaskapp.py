@@ -1,51 +1,36 @@
-from flask import Flask, render_template, redirect, url_for, request
-import threading
-import pandas as pd
-from twilio.rest import Client
-import time
-from datetime import datetime, timezone, timedelta
-from twilio.twiml.voice_response import Gather, VoiceResponse
-import random
-import string
-import pyodbc
-import pandas as pd
-from twilio.twiml.voice_response import VoiceResponse, Gather
-import os
-
-
-server = os.environ.get("serverGFT")
-database = os.environ.get("databaseGFT")
-username = os.environ.get("usernameGFT")
-password = os.environ.get("passwordGFT")
-SQLaddress = os.environ.get("addressGFT")
-account_sid = os.environ.get("account_sid")
-auth_token = os.environ.get("auth_token")
-
-conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-conn = pyodbc.connect(conn_str)
-cursor = conn.cursor()
-
-sql_query = '''
-    SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
-    '''    
-
-cursor.execute(sql_query)
-columns = [column[0] for column in cursor.description]
-
-result = cursor.fetchall()
-data = [list(row) for row in result]
-twiliodf = pd.DataFrame(data, columns=columns)
-voice_response_str = ""
 
 app = Flask(__name__)
 @app.route('/')
 def main_page():
+    global twiliodf
+    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+    conn = pyodbc.connect(conn_str)
+    cursor = conn.cursor()
+
+    sql_query = '''
+        SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
+        '''    
+
+    cursor.execute(sql_query)
+    columns = [column[0] for column in cursor.description]
+
+    result = cursor.fetchall()
+    data = [list(row) for row in result]
+    twiliodf = pd.DataFrame(data, columns=columns)
     table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
     return render_template('html/main.html', table_html=table_html)
+
+
+@app.route('/get_voice_response')
+def get_voice_response():
+    global voice_response_str
+    return jsonify(response=voice_response_str)
 
 @app.route('/progress', methods=['GET', 'POST'])
 def update_rows():
     threads = []
+    global twiliodf
+    print(twiliodf)
     for index, row in twiliodf.iterrows():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
@@ -53,9 +38,8 @@ def update_rows():
     return render_template('html/call.html')
 
 def assignCall(rows):
+    global voice_response_str
     for index, row in twiliodf.iterrows():
-        account_sid = row['account_sid']
-        auth_token = row['auth_token']
         assignQuestion = row['assign_Message']
         tech_phone_number = row['technician_NMBR']
         manager_NMBR = row['manager_NMBR']
@@ -84,8 +68,6 @@ def assignCall(rows):
             )
             message_timestamp_str = message_timestamp.strftime("%Y-%m-%d%H:%M")
             if response:
-                if datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=firstdelaytime) and datetime.now(timezone.utc) - message_timestamp < timedelta(minutes=callManagertime):
-                    print(voice_response_str)
                 print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 latest_response = response[0]
                 if (
@@ -142,13 +124,13 @@ def assignCall(rows):
                         url="https://twilliocall.guardianfueltech.com/voice"
                     )
                     print("Initiating a phone call to remind the tech to acknowledge the call.")
+                    voice_response_str
 
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
-    """Respond to incoming phone calls with a menu of options"""
     # Start our TwiML response
     resp = VoiceResponse()
-    chosen = None
+    global voice_response_str
 
     # If Twilio's request to our app included already gathered digits,
     # process them
@@ -175,7 +157,5 @@ def voice():
     gather = Gather(num_digits=1)
     gather.say('To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
+    
     return str(resp)
-
-if __name__ == "__main__":
-    app.run(port=8000, host='0.0.0.0', threaded=True)
