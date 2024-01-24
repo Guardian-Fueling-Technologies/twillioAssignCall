@@ -38,6 +38,7 @@ twiliodf = pd.DataFrame(data, columns=columns)
 voice_response_str = ""
 
 app = Flask(__name__)
+
 @app.route('/')
 def main_page():
     global twiliodf
@@ -162,7 +163,6 @@ def assignCall(rows):
                         url="https://twilliocall.guardianfueltech.com/voice"
                     )
                     print("Initiating a phone call to remind the tech to acknowledge the call.")
-                    voice_response_str
 
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
