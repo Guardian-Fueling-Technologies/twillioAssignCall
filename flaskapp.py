@@ -175,8 +175,7 @@ def voice():
     gather = Gather(num_digits=1)
     gather.say('To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-
-    return render_template('html/voice_template.html', chosen_digit=chosen)
+    return str(resp)
 
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0', threaded=True)
