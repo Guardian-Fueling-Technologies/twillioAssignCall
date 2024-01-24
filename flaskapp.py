@@ -1,3 +1,41 @@
+from flask import Flask, render_template, redirect, url_for, request
+import threading
+import pandas as pd
+from twilio.rest import Client
+import time
+from datetime import datetime, timezone, timedelta
+from twilio.twiml.voice_response import Gather, VoiceResponse
+import random
+import string
+import pyodbc
+import pandas as pd
+from twilio.twiml.voice_response import VoiceResponse, Gather
+import os
+
+
+server = os.environ.get("serverGFT")
+database = os.environ.get("databaseGFT")
+username = os.environ.get("usernameGFT")
+password = os.environ.get("passwordGFT")
+SQLaddress = os.environ.get("addressGFT")
+account_sid = os.environ.get("account_sid")
+auth_token = os.environ.get("auth_token")
+
+conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+conn = pyodbc.connect(conn_str)
+cursor = conn.cursor()
+
+sql_query = '''
+    SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
+    '''    
+
+cursor.execute(sql_query)
+columns = [column[0] for column in cursor.description]
+
+result = cursor.fetchall()
+data = [list(row) for row in result]
+twiliodf = pd.DataFrame(data, columns=columns)
+voice_response_str = ""
 
 app = Flask(__name__)
 @app.route('/')
