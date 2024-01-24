@@ -12,6 +12,8 @@ import pandas as pd
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 
+voice_response_str = "firsttime"
+twiliodf = pd.DataFrame()
 
 server = os.environ.get("serverGFT")
 database = os.environ.get("databaseGFT")
@@ -41,7 +43,6 @@ def main_page():
     twiliodf = pd.DataFrame(data, columns=columns)
     table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
     return render_template('html/main.html', table_html=table_html)
-
 
 @app.route('/get_voice_response')
 def get_voice_response():
@@ -182,6 +183,6 @@ def voice():
     resp.append(gather)
     
     return str(resp)
-
+    
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0', threaded=True)
