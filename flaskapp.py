@@ -10,6 +10,8 @@ import string
 import pyodbc
 import pandas as pd
 from twilio.twiml.voice_response import VoiceResponse, Gather
+import os
+
 
 server = os.environ.get("serverGFT")
 database = os.environ.get("databaseGFT")
