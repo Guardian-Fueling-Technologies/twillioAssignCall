@@ -21,24 +21,7 @@ SQLaddress = os.environ.get("addressGFT")
 account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
-conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-conn = pyodbc.connect(conn_str)
-cursor = conn.cursor()
-
-sql_query = '''
-    SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
-    '''    
-
-cursor.execute(sql_query)
-columns = [column[0] for column in cursor.description]
-
-result = cursor.fetchall()
-data = [list(row) for row in result]
-twiliodf = pd.DataFrame(data, columns=columns)
-voice_response_str = ""
-
 app = Flask(__name__)
-
 @app.route('/')
 def main_page():
     global twiliodf
@@ -107,7 +90,7 @@ def assignCall(rows):
             )
             message_timestamp_str = message_timestamp.strftime("%Y-%m-%d%H:%M")
             if response:
-                print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+                print(voice_response_str, response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 latest_response = response[0]
                 if (
                     latest_response.body.lower() == yes3CharWord
@@ -160,7 +143,7 @@ def assignCall(rows):
                     call = client.calls.create(
                         to=tech_phone_number,
                         from_="+18556258756",
-                        url="https://twilliocall.guardianfueltech.com/voice"
+                        url="https://twilliocall.guardianfueltech.com/voice?callMessage=Guardiande%20default%20call%20message"
                     )
                     print("Initiating a phone call to remind the tech to acknowledge the call.")
 
@@ -169,6 +152,8 @@ def voice():
     # Start our TwiML response
     resp = VoiceResponse()
     global voice_response_str
+    callMessage = request.args.get('callMessage')
+
 
     # If Twilio's request to our app included already gathered digits,
     # process them
@@ -178,11 +163,11 @@ def voice():
 
         # <Say> a different message depending on the caller's choice
         if choice == '1':
-            resp.say('You selected sales. Good for you!')
+            resp.say('You have accepted the call. Good for you!')
             voice_response_str = str(resp) 
             return voice_response_str
         elif choice == '2':
-            resp.say('You need support. We will help!')
+            resp.say('You have delinced the call. We will help!')
             voice_response_str = str(resp) 
             return voice_response_str
         elif choice == '3':
@@ -193,7 +178,7 @@ def voice():
             resp.say("Sorry, I don't understand that choice.")
 
     gather = Gather(num_digits=1)
-    gather.say('To accept, press 1. To decline, press 2. To replay voice please press 3.')
+    gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
     
     return str(resp)
