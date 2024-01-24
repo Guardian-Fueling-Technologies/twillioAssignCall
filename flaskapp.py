@@ -10,27 +10,39 @@ import string
 import pyodbc
 import pandas as pd
 from twilio.twiml.voice_response import VoiceResponse, Gather
+conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};"
+conn = pyodbc.connect(conn_str)
+cursor = conn.cursor()
 
-df = pd.read_csv('newAssigncall.csv')
+sql_query = '''
+    SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
+    '''    
+
+cursor.execute(sql_query)
+columns = [column[0] for column in cursor.description]
+
+result = cursor.fetchall()
+data = [list(row) for row in result]
+twiliodf = pd.DataFrame(data, columns=columns)
 voice_response_str = ""
 
 app = Flask(__name__)
 @app.route('/')
 def main_page():
-    table_html = df.to_html(classes='table table-bordered table-hover', index=False)
+    table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
     return render_template('html/main.html', table_html=table_html)
 
 @app.route('/progress', methods=['GET', 'POST'])
 def update_rows():
     threads = []
-    for index, row in df.iterrows():
+    for index, row in twiliodf.iterrows():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
         assign_thread.start()
     return render_template('html/call.html')
 
 def assignCall(rows):
-    for index, row in df.iterrows():
+    for index, row in twiliodf.iterrows():
         account_sid = row['account_sid']
         auth_token = row['auth_token']
         assignQuestion = row['assign_Message']
