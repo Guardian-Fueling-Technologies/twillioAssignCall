@@ -10,6 +10,13 @@ import string
 import pyodbc
 import pandas as pd
 from twilio.twiml.voice_response import VoiceResponse, Gather
+
+server = os.environ.get("serverGFT")
+database = os.environ.get("databaseGFT")
+username = os.environ.get("usernameGFT")
+password = os.environ.get("passwordGFT")
+SQLaddress = os.environ.get("addressGFT")
+
 conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};"
 conn = pyodbc.connect(conn_str)
 cursor = conn.cursor()
