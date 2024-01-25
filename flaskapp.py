@@ -30,11 +30,13 @@ def updateTwilio(status, message_timestamp, response_timestamp, ticket_no):
     conn = pyodbc.connect(conn_str)
     cursor = conn.cursor()
     
-    update_query = f'UPDATE [GFT].[dbo].[MR_T_TwilioOnCall]
-                    SET status = ?,
-                            message_timestamp = ?,
-                            response_timestamp = ?
-                        WHERE ticket_no = ?'
+    update_query = f'''
+        UPDATE [GFT].[dbo].[MR_T_TwilioOnCall]
+        SET status = ?,
+            message_timestamp = ?,
+            response_timestamp = ?
+        WHERE ticket_no = ?
+    '''
     
     values = (status, message_timestamp, response_timestamp, ticket_no)
     cursor.execute(update_query, values)
