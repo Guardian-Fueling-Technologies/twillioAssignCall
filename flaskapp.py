@@ -24,6 +24,35 @@ account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
 app = Flask(__name__)
+def updateTwilio(status, message_timestamp, response_timestamp, ticket_no):
+    global twiliodf
+    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+    conn = pyodbc.connect(conn_str)
+    cursor = conn.cursor()
+    
+    update_query = f'UPDATE [GFT].[dbo].[MR_T_TwilioOnCall]
+                    SET status = ?,
+                            message_timestamp = ?,
+                            response_timestamp = ?
+                        WHERE ticket_no = ?'
+    
+    values = (status, message_timestamp, response_timestamp, ticket_no)
+    cursor.execute(update_query, values)
+    conn.commit()
+
+    sql_query = '''
+    SELECT * FROM [GFT].[dbo].[MR_T_TwilioOnCall]
+    '''    
+
+    cursor.execute(sql_query)
+    columns = [column[0] for column in cursor.description]
+
+    result = cursor.fetchall()
+    data = [list(row) for row in result]
+    twiliodf = pd.DataFrame(data, columns=columns)
+    cursor.close()
+    conn.close()
+
 @app.route('/')
 def main_page():
     global twiliodf
@@ -43,6 +72,8 @@ def main_page():
     twiliodf = pd.DataFrame(data, columns=columns)
     table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
     return render_template('html/main.html', table_html=table_html)
+
+
 
 @app.route('/get_voice_response')
 def get_voice_response():
@@ -102,8 +133,7 @@ def assignCall(rows):
                         from_=twilio_number,
                         to=tech_phone_number
                     )
-                    print("Tech accepted the call.", latest_response.date_sent)
-                    return 1, message_timestamp, latest_response.date_sent
+                    updateTwilio(1, message_timestamp, latest_response.date_sent, row['ticket_no'])
                     break 
                 elif (
                     latest_response.body.lower() == no3CharWord
@@ -114,8 +144,7 @@ def assignCall(rows):
                         from_=twilio_number,
                         to=tech_phone_number
                     )
-                    print("Tech declined the call.")
-                    return 2, message_timestamp, latest_response.date_sent
+                    updateTwilio(2, message_timestamp, latest_response.date_sent, row['ticket_no'])
                     break
             else:
                 print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
@@ -166,11 +195,11 @@ def voice():
         if choice == '1':
             resp.say('You have accepted the call. Good for you!')
             voice_response_str = str(resp) 
-            return voice_response_str
+            return "1"
         elif choice == '2':
-            resp.say('You have delinced the call. We will help!')
+            resp.say('You have declined the call. We will help!')
             voice_response_str = str(resp) 
-            return voice_response_str
+            return "2"
         elif choice == '3':
             resp.say('You pressed replay voice ')
             resp.redirect('/voice')
