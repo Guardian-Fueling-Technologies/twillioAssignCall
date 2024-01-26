@@ -221,17 +221,13 @@ def voice():
             resp.say('You have declined the call. We will help!')
             voice_response_str = "2"
             return str(resp) 
-        elif choice == '3':
-            resp.say('You pressed replay voice ')
         else:
             resp.say('I did not get your response.')
-            resp.redirect('/voice')
 
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-    if 'Digits' in request.values and request.values['Digits'] == '3':
-        resp.redirect(f'/voice?callMessage={callMessage}')
+    resp.redirect(f'/voice?callMessage={callMessage}')
     return str(resp)
     
 if __name__ == "__main__":
