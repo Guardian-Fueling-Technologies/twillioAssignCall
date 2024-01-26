@@ -24,6 +24,7 @@ SQLaddress = os.environ.get("addressGFT")
 account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
+
 def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
@@ -181,7 +182,7 @@ def assignCall(rows):
                     call = client.calls.create(
                         to=manager_NMBR,
                         from_="+18556258756",
-                        url=f"https://handler.twilio.com/twiml/EHde6244b9fd963fe81b6c0fc467d07740?Name=Charlie&Date={message_timestamp_str}"
+                        url=f"https://twilliocall.guardianfueltech.com/voice?callMessage={encoded_params}"
                     )
                     print("Initiating a phone call to elevate to acknowledge the call.")
                 # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
@@ -222,16 +223,15 @@ def voice():
             return str(resp) 
         elif choice == '3':
             resp.say('You pressed replay voice ')
-            return redirect(f'/voice?callMessage={callMessage}')
         else:
-            resp.say("I didn't get your response please Press 1 to Accept 2 to Decline")
+            resp.say('I did not get your response.')
             resp.redirect('/voice')
 
-    resp = VoiceResponse()
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-    
+    if 'Digits' in request.values and request.values['Digits'] == '3':
+        resp.redirect(f'/voice?callMessage={callMessage}')
     return str(resp)
     
 if __name__ == "__main__":
