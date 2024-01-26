@@ -23,7 +23,7 @@ SQLaddress = os.environ.get("addressGFT")
 account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
-app = Flask(__name__)\
+app = Flask(__name__)
 def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
