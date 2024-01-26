@@ -23,7 +23,6 @@ SQLaddress = os.environ.get("addressGFT")
 account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
-app = Flask(__name__)
 def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
@@ -62,7 +61,7 @@ def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
         response_timestamp,
         row.get('calltime', ''),  # [calltime]
         row.get('callManagertime', ''),  # [callManagertime]
-        datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
+        datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     )
     
     cursor.execute(update_query, values)
@@ -136,11 +135,11 @@ def assignCall(rows):
                 to=twilio_number,
                 limit=1
             )
-            message_timestamp_str = message_timestamp.strftime("%Y-%m-%d%H:%M")
+            message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
             if response:
                 print(voice_response_str, response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 latest_response = response[0]
-                if (
+                if (voice_response_str == "1" or 
                     latest_response.body.lower() == yes3CharWord
                     and latest_response.date_sent > message_timestamp
                 ):
@@ -149,9 +148,10 @@ def assignCall(rows):
                         from_=twilio_number,
                         to=tech_phone_number
                     )
-                    updateTwilio(row, 1, message_timestamp, latest_response.date_sent, row['ticket_no'])
+                    updateTwilio(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'])
+                    voice_response_str = "initial"
                     break 
-                elif (
+                elif (voice_response_str == "2" or 
                     latest_response.body.lower() == no3CharWord
                     and latest_response.date_sent > message_timestamp
                 ):                
@@ -160,7 +160,8 @@ def assignCall(rows):
                         from_=twilio_number,
                         to=tech_phone_number
                     )
-                    updateTwilio(row, 2, message_timestamp, latest_response.date_sent, row['ticket_no'])
+                    updateTwilio(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'])
+                    voice_response_str = "initial"
                     break
             else:
                 print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
@@ -197,6 +198,7 @@ def assignCall(rows):
 
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
+    resp = VoiceResponse()
     # Start our TwiML response
     global voice_response_str
     callMessage = request.args.get('callMessage')
@@ -210,21 +212,17 @@ def voice():
 
         # <Say> a different message depending on the caller's choice
         if choice == '1':
-            resp = VoiceResponse()
             resp.say('You have accepted the call. Good for you!')
-            voice_response_str = str(resp) 
-            return "1"
+            voice_response_str = "1"
+            return str(resp) 
         elif choice == '2':
-            resp = VoiceResponse()
             resp.say('You have declined the call. We will help!')
-            voice_response_str = str(resp) 
-            return "2"
+            voice_response_str = "2"
+            return str(resp) 
         elif choice == '3':
-            resp = VoiceResponse()
             resp.say('You pressed replay voice ')
             return redirect(f'/voice?callMessage={callMessage}')
         else:
-            resp = VoiceResponse()
             resp.say("I didn't get your response please Press 1 to Accept 2 to Decline")
             resp.redirect('/voice')
 
