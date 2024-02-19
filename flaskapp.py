@@ -25,7 +25,36 @@ account_sid = os.environ.get("account_sid")
 auth_token = os.environ.get("auth_token")
 
 
-def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
+def read_number_digits(number):
+    digits = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+    return ' '.join(digits[int(digit)] for digit in str(number))
+
+def replace_numbers_with_spoken(text):
+    numbers = re.findall(r'\b\d+\b', text)
+    
+    for number in numbers:
+        spoken_representation = read_number_digits(int(number))
+        text = text.replace(number, spoken_representation)
+    return text
+
+
+def updateProc(ticket_no, order):
+    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+    conn = pyodbc.connect(conn_str)
+    cursor = conn.cursor()
+    print(proc, (ticket_no, order))
+    
+    proc = f'''
+        CALL [dbo].[MR_OnCall_Escalation_Path] (?, ?)
+    '''    
+    cursor.execute(proc, (ticket_no, order))
+    row = cursor.fetchone()
+    print(row)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def updateReport(row, status, message_timestamp, response_timestamp, ticket_no):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
     cursor = conn.cursor()
@@ -72,30 +101,74 @@ def updateTwilio(row, status, message_timestamp, response_timestamp, ticket_no):
     conn.close()
 
 app = Flask(__name__)
-@app.route('/')
-def main_page():
-    global twiliodf
+
+@app.route('/get_voice_response')
+def get_voice_response():
+    global voice_response_str
+    return jsonify(response=voice_response_str)
+
+
+def fetch_and_update_data():
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
     cursor = conn.cursor()
 
     sql_query = '''
-        SELECT * FROM [dbo].[MR_Staging_TwilioOnCall]
-        '''    
+    SELECT 
+        [text_Message]
+        ,[voice_Message]
+        ,[Max_Escalations]
+        ,[ticket_no]
+        ,[Technician_ID]
+        ,[technician_NMBR]
+        ,[manager_NMBR]
+        ,[twilio_NMBR]
+        ,[status]
+        ,[message_timestamp]
+        ,[response_timestamp]
+        ,[calltime]
+        ,[callManagertime]
+        ,[LastUpdated]
+    FROM [dbo].[MR_Staging_TwilioOnCall]
+    '''
 
     cursor.execute(sql_query)
     columns = [column[0] for column in cursor.description]
 
     result = cursor.fetchall()
     data = [list(row) for row in result]
+    
+    global twiliodf
     twiliodf = pd.DataFrame(data, columns=columns)
-    table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
-    return render_template('html/main.html', table_html=table_html)
+    interval_minutes = 7
+    cursor.close()
+    conn.close()
+    schedule.every(int(interval_minutes)).minutes.do(fetch_and_update_data)
 
-@app.route('/get_voice_response')
-def get_voice_response():
-    global voice_response_str
-    return jsonify(response=voice_response_str)
+fetch_and_update_data()
+def run_continuously():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+        
+# Route to render the main page
+@app.route('/')
+def main_page():
+    global twiliodf
+    print("mainpage",twiliodf)
+    if len(twiliodf) > 0:
+        table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
+        return render_template('html/main.html', table_html=table_html)
+    else:
+        return render_template('html/mainNoData.html')
+
+def update_rows():
+    threads = []
+    global twiliodf
+    for index, row in twiliodf.iterrows():
+        assign_thread = threading.Thread(target=assignCall, args=(row,))
+        threads.append(assign_thread)
+        assign_thread.start()
 
 def assignCall(row):
     global voice_response_str
@@ -175,12 +248,12 @@ def assignCall(row):
                         
 
 @app.route('/progress/<ticket_no>', methods=['GET', 'POST'])
-def trigger_update_rows():
+def trigger_update_rows(ticket_no):
     update_rows()
     return render_template('html/call.html')
 
 @app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
-def voice():
+def voice(ticket_no):
     resp = VoiceResponse()
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
@@ -200,8 +273,9 @@ def voice():
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-    resp.redirect('/voice')
+    resp.redirect(f'/voice/{ticket_no}')
     return str(resp)
+    
     
 if __name__ == "__main__":
     app.run(port=8000, host='0.0.0.0', threaded=True)
