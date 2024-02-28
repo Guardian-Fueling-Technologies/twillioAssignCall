@@ -11,9 +11,9 @@ import pyodbc
 import pandas as pd
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
+import re
 from urllib.parse import quote
 
-voice_response_str = "firsttime"
 twiliodf = pd.DataFrame()
 
 server = os.environ.get("serverGFT")
@@ -37,7 +37,6 @@ def replace_numbers_with_spoken(text):
         text = text.replace(number, spoken_representation)
     return text
 
-
 def updateProc(ticket_no, order):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
@@ -54,124 +53,69 @@ def updateProc(ticket_no, order):
     cursor.close()
     conn.close()
 
-def updateReport(row, status, message_timestamp, response_timestamp, ticket_no):
+def updateReport(row, status, message_timestamp, response_timestamp, ticket_no, escalation_Order):
     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
     conn = pyodbc.connect(conn_str)
     cursor = conn.cursor()
     
     update_query = f'''
         INSERT INTO [dbo].[MR_Report_TwilioOnCall] (
-            [text_Message],
-            [voice_Message],
-            [escalation_Message],
-            [ticket_no],
-            [Technician_ID],
-            [technician_NMBR],
-            [manager_NMBR],
-            [twilio_NMBR],
-            [status],
-            [message_timestamp],
-            [response_timestamp],
-            [calltime],
-            [callManagertime],
-            [LastUpdated]
+        [ticket_no]
+        ,[Technician_ID]
+        ,[technician_NMBR]
+        ,[status]
+        ,[escalation_Order]
+        ,[message_timestamp]
+        ,[response_timestamp]
+        ,[calltime]
+        ,[LastUpdated]
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     '''
     values = (
-        row.get('text_Message', ''),
-        row.get('voice_Message', ''), 
-        row.get('escalation_Message', ''),
         ticket_no,
         row.get('Technician_ID', ''),
         row.get('technician_NMBR', ''),
-        row.get('manager_NMBR', ''),
-        row.get('twilio_NMBR', ''),
         status,
+        escalation_Order,
         message_timestamp,
         response_timestamp,
         row.get('calltime', ''),  # [calltime]
-        row.get('callManagertime', ''),  # [callManagertime]
         datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     )
-    
+
     cursor.execute(update_query, values)
     conn.commit()
     cursor.close()
     conn.close()
 
 app = Flask(__name__)
-
-@app.route('/get_voice_response')
-def get_voice_response():
-    global voice_response_str
-    return jsonify(response=voice_response_str)
-
-
-def fetch_and_update_data():
-    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-    conn = pyodbc.connect(conn_str)
-    cursor = conn.cursor()
-
-    sql_query = '''
-    SELECT 
-        [text_Message]
-        ,[voice_Message]
-        ,[Max_Escalations]
-        ,[ticket_no]
-        ,[Technician_ID]
-        ,[technician_NMBR]
-        ,[manager_NMBR]
-        ,[twilio_NMBR]
-        ,[status]
-        ,[message_timestamp]
-        ,[response_timestamp]
-        ,[calltime]
-        ,[callManagertime]
-        ,[LastUpdated]
-    FROM [dbo].[MR_Staging_TwilioOnCall]
-    '''
-
-    cursor.execute(sql_query)
-    columns = [column[0] for column in cursor.description]
-
-    result = cursor.fetchall()
-    data = [list(row) for row in result]
-    
-    global twiliodf
-    twiliodf = pd.DataFrame(data, columns=columns)
-    interval_minutes = 7
-    cursor.close()
-    conn.close()
-    schedule.every(int(interval_minutes)).minutes.do(fetch_and_update_data)
-
-fetch_and_update_data()
-def run_continuously():
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
         
 # Route to render the main page
 @app.route('/')
 def main_page():
     global twiliodf
-    print("mainpage",twiliodf)
     if len(twiliodf) > 0:
         table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
         return render_template('html/main.html', table_html=table_html)
     else:
         return render_template('html/mainNoData.html')
+    # <form method="get" action="{{ url_for('update_rows') }}">
+    #     <button type="submit" class="assign-call-button">Assign Call</button>
+    # </form>
 
+@app.route('/progress', methods=['GET', 'POST'])
 def update_rows():
     threads = []
     global twiliodf
     for index, row in twiliodf.iterrows():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
-        assign_thread.start()
+        assign_thread.start()    
+    return render_template('html/call.html')
 
 def assignCall(row):
-    global voice_response_str
+    voice_response_str = "0"
     assignQuestion = row.get('text_Message', '')
     tech_phone_number = row.get('technician_NMBR', '')
     twilio_number = row.get('twilio_NMBR', '')
@@ -183,7 +127,6 @@ def assignCall(row):
     client = Client(account_sid, auth_token)
     call_timestamps = []
     # first time message method
-    print(Max_Escalations)
     for localEscalation in range(0, Max_Escalations+1):
         if localEscalation == 0:
             yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
@@ -204,9 +147,10 @@ def assignCall(row):
                 )
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
-                    print(voice_response_str, response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+                    print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                     latest_response = response[0]
-                    if (voice_response_str == "1" or 
+                    # voice_response_str == "1" or 
+                    if (
                         latest_response.body.lower().strip() == yes3CharWord
                         and latest_response.date_sent > message_timestamp
                     ):
@@ -215,7 +159,7 @@ def assignCall(row):
                             from_=twilio_number,
                             to=tech_phone_number
                         )
-                        updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'])
+                        updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         voice_response_str = "initial"
                         break 
                 else:
@@ -230,7 +174,7 @@ def assignCall(row):
                             to=tech_phone_number
                         )
                         updateProc(ticket_no, localEscalation+1)
-                        updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'])
+                        updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
 
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                         return 
@@ -243,17 +187,21 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                             )
-                        voice_response_str = call._context
+                        print(call.events, call.fetch, call._context, call)
                         print("Initiating a phone call to remind the tech to acknowledge the call.")
-                        
 
-@app.route('/progress/<ticket_no>', methods=['GET', 'POST'])
-def trigger_update_rows(ticket_no):
-    update_rows()
-    return render_template('html/call.html')
+@app.route("/voice/<ticket_no>", methods=['GET'])
+def voice_initial(ticket_no):
+    resp = VoiceResponse()
+    callMessage = request.args.get('callMessage')
+    gather = Gather(timeout=5, num_digits=1)
+    gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
+    resp.append(gather)
+    resp.redirect(f'/voice/{ticket_no}')
+    return str(resp)
 
-@app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
-def voice(ticket_no):
+@app.route("/voice/<ticket_no>", methods=['POST'])
+def voice_callback(ticket_no):
     resp = VoiceResponse()
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
@@ -261,11 +209,11 @@ def voice(ticket_no):
 
         if choice == '1':
             resp.say('You have accepted the call. Good for you!')
-            voice_response_str = "1"
+            # You can handle the response here or save it to a global variable if needed
             return "1" 
         elif choice == '2':
             resp.say('You have declined the call. We will help!')
-            voice_response_str = "2"
+            # You can handle the response here or save it to a global variable if needed
             return "2" 
         else:
             resp.say('I did not get your response.')
@@ -275,7 +223,75 @@ def voice(ticket_no):
     resp.append(gather)
     resp.redirect(f'/voice/{ticket_no}')
     return str(resp)
-    
+
     
 if __name__ == "__main__":
+    def fetch_and_update_data():
+        conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+
+        sql_query = '''
+        SELECT
+        [text_Message]
+        ,[voice_Message]
+        ,[Ack_Message]
+        ,[overTime_message]
+        ,[Max_Escalations]
+        ,[Processed]
+        ,[ticket_no]
+        ,[Technician_ID]
+        ,[technician_NMBR]
+        ,[manager_NMBR]
+        ,[twilio_NMBR]
+        ,[status]
+        ,[message_timestamp]
+        ,[response_timestamp]
+        ,[calltime]
+        ,[callManagertime]
+        ,[LastUpdated]
+        FROM [GFT].[dbo].[MR_Staging_TwilioOnCall] WITH(NOLOCK)
+        WHERE [technician_NMBR] <> ? AND Processed <> 1;
+        '''
+
+        cursor.execute(sql_query, "None")
+        columns = [column[0] for column in cursor.description]
+
+        result = cursor.fetchall()
+        data = [list(row) for row in result]
+        
+        global twiliodf
+        twiliodf = pd.DataFrame(data, columns=columns)
+        update_query = '''
+            UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+            SET Processed = 1
+            WHERE Processed <> 1;
+        '''
+
+        cursor.execute(update_query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("processed also update", twiliodf)
+    
+    def unUpdate():
+        conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+        update_query = '''
+            UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+            SET Processed = 0
+            WHERE Processed = 1;
+        '''
+
+        cursor.execute(update_query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+    def getTwillioStaging():
+        while True:
+            fetch_and_update_data()
+            time.sleep(60)
+    unUpdate()
+    threading.Thread(target=getTwillioStaging, daemon=True).start()
     app.run(port=8000, host='0.0.0.0', threaded=True)

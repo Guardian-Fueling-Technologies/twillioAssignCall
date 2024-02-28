@@ -96,25 +96,7 @@
 <!-- JavaScript to fetch and update the voice response -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
-<!-- Your JavaScript code -->
-<script>
-function updateVoiceResponse() {
-    // Make an asynchronous request to the /get_voice_response endpoint
-    $.ajax({
-        url: "/get_voice_response",
-        type: "GET",
-        dataType: "json",
-        success: function (data) {
-            // Update the content of the voice-response-container
-            $("#voice-response-container").text("Voice Response: " + data.response);
-        },
-        error: function (error) {
-            console.error("Error fetching voice response:", error);
-        }
-    });
-}
-
-// Call the updateVoiceResponse function periodically (e.g., every 5 seconds)
+<!-- // Call the updateVoiceResponse function periodically (e.g., every 5 seconds) -->
 setInterval(updateVoiceResponse, 10000);
 </script>
 

@@ -49,9 +49,6 @@
     <h1>Main Page</h1>
     <h3>Add something</h3>
     {{ table_html | safe }}
-    <form method="get" action="{{ url_for('update_rows') }}">
-        <button type="submit" class="assign-call-button">Assign Call</button>
-    </form>
 </body>
 
 </html>
