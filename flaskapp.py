@@ -189,41 +189,34 @@ def assignCall(row):
                             )
                         print(call.events, call.fetch, call._context, call)
                         print("Initiating a phone call to remind the tech to acknowledge the call.")
-
-@app.route("/voice/<ticket_no>", methods=['GET'])
-def voice_initial(ticket_no):
+@app.route("/voice", methods=['GET', 'POST'])
+def voice():
     resp = VoiceResponse()
-    callMessage = request.args.get('callMessage')
-    gather = Gather(timeout=5, num_digits=1)
-    gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
-    resp.append(gather)
-    resp.redirect(f'/voice/{ticket_no}')
-    return str(resp)
-
-@app.route("/voice/<ticket_no>", methods=['POST'])
-def voice_callback(ticket_no):
-    resp = VoiceResponse()
+    # Start our TwiML response
+    global voice_response_str
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
         choice = request.values['Digits']
-
         if choice == '1':
             resp.say('You have accepted the call. Good for you!')
-            # You can handle the response here or save it to a global variable if needed
-            return "1" 
+            voice_response_str = "1"
+            return str(resp) 
         elif choice == '2':
             resp.say('You have declined the call. We will help!')
-            # You can handle the response here or save it to a global variable if needed
-            return "2" 
+            voice_response_str = "2"
+            return str(resp) 
+        elif choice == '3':
+            resp.say('You pressed replay voice ')
         else:
             resp.say('I did not get your response.')
+            resp.redirect('/voice')
 
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-    resp.redirect(f'/voice/{ticket_no}')
+    if 'Digits' in request.values and request.values['Digits'] == '3':
+        resp.redirect(f'/voice?callMessage={callMessage}')
     return str(resp)
-
     
 if __name__ == "__main__":
     def fetch_and_update_data():
@@ -291,7 +284,7 @@ if __name__ == "__main__":
     def getTwillioStaging():
         while True:
             fetch_and_update_data()
-            time.sleep(60)
+            time.sleep(60*7)
     unUpdate()
     threading.Thread(target=getTwillioStaging, daemon=True).start()
     app.run(port=8000, host='0.0.0.0', threaded=True)
