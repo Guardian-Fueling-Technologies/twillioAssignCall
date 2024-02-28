@@ -184,13 +184,12 @@ def assignCall(row):
                         call = client.calls.create(
                             to=tech_phone_number,
                             from_="+18556258756",
-                            url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
+                            url = f"https://twilliocall.guardianfueltech.com/voice?callMessage={encoded_params}"
                             )
-                        print(call.events, call.fetch, call._context, call)
                         print("Initiating a phone call to remind the tech to acknowledge the call.")
 
-@app.route("/voice/<ticket_no>", methods=['POST','GET'])
-def voice_callback(ticket_no):
+@app.route("/voice", methods=['POST','GET'])
+def voice():
     resp = VoiceResponse()
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
@@ -208,7 +207,7 @@ def voice_callback(ticket_no):
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
     resp.append(gather)
-    resp.redirect(f'/voice/{ticket_no}')
+    resp.redirect(f'/voice')
     return str(resp)
 
     
