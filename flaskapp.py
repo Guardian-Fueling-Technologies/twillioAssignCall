@@ -185,46 +185,30 @@ def assignCall(row):
                         call = client.calls.create(
                             to=tech_phone_number,
                             from_="+18556258756",
-                            url = f"https://twilliocall.guardianfueltech.com/voice"
+                            url = f"https://twilliocall.guardianfueltech.com/voice?callMessage={encoded_params}"
                             )
                         print("Initiating a phone call to remind the tech to acknowledge the call.")
 
-@app.route("/voice", methods=['GET', 'POST'])
+@app.route("/voice", methods=['GET','POST'])
 def voice():
-    """Respond to incoming phone calls with a menu of options"""
-    # Start our TwiML response
     resp = VoiceResponse()
+    callMessage = request.args.get('callMessage')
+    if 'Digits' in request.values:
+        choice = request.values['Digits']
 
-    # Start our <Gather> verb
+        if choice == '1':
+            resp.say('You have acknowledged the call. Good for you!')
+            return str(resp)
+            # You can handle the response here or save it to a global variable if needed
+        else:
+            resp.say('I did not get your response.')
+            return str(resp)
+
     gather = Gather(num_digits=1)
-    gather.say('For sales, press 1. For support, press 2.')
+    gather.say(f'{callMessage}To acknowledge, press 1. To replay voice please press 3.')
     resp.append(gather)
-
-    # If the user doesn't select an option, redirect them into a loop
-    resp.redirect('/voice')
-
+    resp.redirect(f'/voice')
     return str(resp)
-
-# @app.route("/voice", methods=['GET','POST'])
-# def voice():
-#     resp = VoiceResponse()
-#     # callMessage = request.args.get('callMessage')
-#     if 'Digits' in request.values:
-#         choice = request.values['Digits']
-
-#         if choice == '1':
-#             resp.say('You have acknowledged the call. Good for you!')
-#             return str(resp)
-#             # You can handle the response here or save it to a global variable if needed
-#         else:
-#             resp.say('I did not get your response.')
-#             return str(resp)
-
-#     gather = Gather(num_digits=1)
-#     gather.say(f'To acknowledge, press 1. To replay voice please press 3.')
-#     resp.append(gather)
-#     resp.redirect(f'/voice')
-#     return str(resp)
 
     
 if __name__ == "__main__":
