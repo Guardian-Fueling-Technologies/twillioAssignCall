@@ -82,7 +82,7 @@
                         </span>
                     </ol>
 
-                    <form method="post" action="{{ url_for('update_rows') }}">
+                    <form method="post" action="{{ url_for('progress') }}">
                         <button type="submit" class="assign-call-button">Assign Calls</button>
                     </form>
                 </div>
@@ -95,9 +95,5 @@
 
 <!-- JavaScript to fetch and update the voice response -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-
-<!-- // Call the updateVoiceResponse function periodically (e.g., every 5 seconds) -->
-setInterval(updateVoiceResponse, 10000);
-</script>
 
 </html>
