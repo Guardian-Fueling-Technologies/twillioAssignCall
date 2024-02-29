@@ -187,6 +187,7 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice?callMessage={encoded_params}"
                             )
+                        print(f"https://twilliocall.guardianfueltech.com/voice?callMessage={encoded_params}")
                         print("Initiating a phone call to remind the tech to acknowledge the call.")
 
 @app.route("/voice", methods=['POST','GET'])
@@ -204,7 +205,7 @@ def voice():
             resp.say('I did not get your response.')
             return str(resp)
 
-    gather = Gather(timeout=5, num_digits=1)
+    gather = Gather(num_digits=1)
     gather.say(f'{callMessage}To acknowledge, press 1. To replay voice please press 3.')
     resp.append(gather)
     resp.redirect(f'/voice')
