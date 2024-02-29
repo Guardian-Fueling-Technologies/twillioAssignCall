@@ -45,6 +45,7 @@ def updateProc(ticket_no, order):
     proc = f'''
         CALL [dbo].[MR_OnCall_Escalation_Path] (?, ?)
     '''    
+    print((proc, (ticket_no, order)))
     cursor.execute(proc, (ticket_no, order))
     row = cursor.fetchone()
     print(row)
@@ -196,16 +197,15 @@ def voice():
         choice = request.values['Digits']
 
         if choice == '1':
-            resp.say('You have accepted the call. Good for you!')
-            # You can handle the response here or save it to a global variable if needed
-        elif choice == '2':
-            resp.say('You have declined the call. We will help!')
+            resp.say('You have acknowledged the call. Good for you!')
+            return str(resp)
             # You can handle the response here or save it to a global variable if needed
         else:
             resp.say('I did not get your response.')
+            return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
-    gather.say(f'{callMessage}To accept, press 1. To decline, press 2. To replay voice please press 3.')
+    gather.say(f'{callMessage}To acknowledge, press 1. To replay voice please press 3.')
     resp.append(gather)
     resp.redirect(f'/voice')
     return str(resp)
