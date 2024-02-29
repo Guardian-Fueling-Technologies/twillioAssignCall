@@ -200,11 +200,14 @@ def voice():
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
+        elif choice == '3':
+            resp.say('You pressed replay voice ')
+            resp.redirect('/voice')
         else:
-            resp.say('I did not get your response.')
+            resp.say('I did not get your response. ')
             return str(resp)
 
-    gather = Gather(num_digits=1)
+    gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To acknowledge, press 1. To replay voice please press 3.')
     resp.append(gather)
     resp.redirect(f'/voice')
