@@ -217,17 +217,17 @@ def assignCall(row):
                 if response:
                     global responseArr
                     print(responseArr[(int)(ticket_no.split("-")[1])], response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
-                    latest_response = response[0] or responseArr[(int)(ticket_no.split("-")[1])] == 1
+                    latest_response = response[0] 
                     if (
                         latest_response.body.lower().strip() == yes3CharWord
-                        and latest_response.date_sent > message_timestamp
+                        and latest_response.date_sent > message_timestamp or responseArr[(int)(ticket_no.split("-")[1])] == 1
                     ):
                         message = client.messages.create(
                             body=f" you have acknowledged the call {ticket_no}. Thank you",
                             from_=twilio_number,
                             to=tech_phone_number
                         )
-                        responseArr[(int)(ticket_no.split("-")[1])] = 0
+                        responseArr[(int)(ticket_no.split("-")[1])] = None
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         # end of case
                         return 
@@ -315,7 +315,6 @@ def voice(ticket_no):
             global responseArr
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             resp.say('You have acknowledged the call. Good for you!')
-            resp.say(responseArr[(int)(ticket_no.split("-")[1])])
             return str(resp)
         else:
             resp.say('I did not get your response. ')
