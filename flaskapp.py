@@ -15,6 +15,19 @@ import re
 from urllib.parse import quote
 from collections import namedtuple
 
+# global var and db info
+global twiliodf
+twiliodf = pd.DataFrame()
+global responseArr
+responseArr = [None] * 1000
+server = os.environ.get("serverGFT")
+database = os.environ.get("databaseGFT")
+username = os.environ.get("usernameGFT")
+password = os.environ.get("passwordGFT")
+SQLaddress = os.environ.get("addressGFT")
+account_sid = os.environ.get("account_sid")
+auth_token = os.environ.get("auth_token")
+
 class messageEditor():
     def read_number_digits(number):
         digits = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
@@ -302,6 +315,7 @@ def voice(ticket_no):
             global responseArr
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             resp.say('You have acknowledged the call. Good for you!')
+            resp.say(responseArr[(int)(ticket_no.split("-")[1])])
             return str(resp)
         else:
             resp.say('I did not get your response. ')
@@ -314,21 +328,7 @@ def voice(ticket_no):
     return str(resp)
 
     
-if __name__ == "__main__":    
-    # global var and db info
-    global twiliodf
-    twiliodf = pd.DataFrame()
-    global responseArr
-    responseArr = [None] * 1000
-    server = os.environ.get("serverGFT")
-    database = os.environ.get("databaseGFT")
-    username = os.environ.get("usernameGFT")
-    password = os.environ.get("passwordGFT")
-    SQLaddress = os.environ.get("addressGFT")
-    account_sid = os.environ.get("account_sid")
-    auth_token = os.environ.get("auth_token")
-
-
+if __name__ == "__main__":   
     serverFunct.unUpdateStaging()
     # ticketno sample 	
     ticket_no = "240218-0020"
