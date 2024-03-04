@@ -170,6 +170,7 @@ def progress():
 
 # Technician oncall independent thread function
 def assignCall(row):
+    global responseArr
     assignQuestion = row.get('text_Message', '')
     tech_phone_number = row.get('technician_NMBR', '')
     twilio_number = row.get('twilio_NMBR', '')
@@ -180,7 +181,7 @@ def assignCall(row):
     client = Client(account_sid, auth_token)
     call_timestamps = []
     # first time message method
-    localEscalation = 1
+    localEscalation = 0
     escalationData = ()
     while localEscalation <= Max_Escalations:
         if localEscalation == 0:
@@ -191,7 +192,6 @@ def assignCall(row):
                 from_=twilio_number,
                 to=tech_phone_number
             )
-            print(localEscalation)
             while True:
                 # check every 10 sec
                 time.sleep(5)
@@ -203,8 +203,8 @@ def assignCall(row):
                 )
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
-                    print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
-                    latest_response = response[0] or responseArr[(int)(ticket_no.split("-")[1])] == "1"
+                    print(responseArr[(int)(ticket_no.split("-")[1])], response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+                    latest_response = response[0] or responseArr[(int)(ticket_no.split("-")[1])] == 1
                     if (
                         latest_response.body.lower().strip() == yes3CharWord
                         and latest_response.date_sent > message_timestamp
@@ -214,6 +214,7 @@ def assignCall(row):
                             from_=twilio_number,
                             to=tech_phone_number
                         )
+                        responseArr[(int)(ticket_no.split("-")[1])] = 0
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         # end of case
                         return 
@@ -296,7 +297,7 @@ def voice(ticket_no):
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
         choice = request.values['Digits']
-        global responseList
+        global responseArr
 
         if choice == '1':
             resp.say('You have acknowledged the call. Good for you!')
@@ -304,6 +305,7 @@ def voice(ticket_no):
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
         elif choice == '3':
+            gather.say(f'{callMessage}To acknowledge, please press 1. To replay voice please press 3.')
             resp.say('You pressed replay voice ')
             resp.redirect(f'/voice/{ticket_no}')
         else:
