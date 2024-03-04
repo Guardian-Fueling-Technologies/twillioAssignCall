@@ -13,8 +13,13 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 import re
 from urllib.parse import quote
+from collections import namedtuple
 
+global twiliodf
 twiliodf = pd.DataFrame()
+global responseList
+responseList = [None] * 1000
+
 
 server = os.environ.get("serverGFT")
 database = os.environ.get("databaseGFT")
@@ -101,6 +106,7 @@ class serverFunct():
         conn.commit()
         cursor.close()
         conn.close()
+    # return namedtuple
     def updateProc(ticket_no, order):
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
         conn = pyodbc.connect(conn_str)
@@ -110,9 +116,12 @@ class serverFunct():
         '''
         cursor.execute(proc, (ticket_no, order))
         row = cursor.fetchone()
+        Row = namedtuple('Row', ['Action','Phone','message','escalationOrder'])
+        escalationData = Row(*row)
         conn.commit()
         cursor.close()
         conn.close()
+        return escalationData
 
     def updateReport(row, status, message_timestamp, response_timestamp, ticket_no, escalation_Order):
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
@@ -182,11 +191,11 @@ def assignCall(row):
     callManagertime = row.get('callManagertime', '')
     ticket_no = row.get('ticket_no', '')
     Max_Escalations = row.get('Max_Escalations', '')
-    escalation_Order = row.get('escalation_Order', '')
     client = Client(account_sid, auth_token)
     call_timestamps = []
     # first time message method
-    localEscalation = 0
+    localEscalation = 1
+    escalationData = ()
     while localEscalation <= Max_Escalations:
         if localEscalation == 0:
             yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
@@ -196,6 +205,7 @@ def assignCall(row):
                 from_=twilio_number,
                 to=tech_phone_number
             )
+            print(localEscalation)
             while True:
                 # check every 10 sec
                 time.sleep(5)
@@ -233,9 +243,9 @@ def assignCall(row):
                             from_=twilio_number,
                             to=tech_phone_number
                         )
-                        serverFunct.updateProc(ticket_no, localEscalation+1)
+                        localEscalation += 1
                         serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
-
+                        break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
                         call_timestamps.append(datetime.now(timezone.utc))
@@ -246,8 +256,54 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                             )
-                        print("Initiating a phone call to remind the tech to acknowledge the call.")
-
+        else:
+            escalationData = serverFunct.updateProc(ticket_no, localEscalation)
+            # print(escalationData)
+            if(escalationData.Action=="Call"):
+                params = messageEditor.replace_numbers_with_spoken(escalationData.message)
+                encoded_params = quote(params)
+                call = client.calls.create(
+                    to=tech_phone_number,
+                    from_="+18556258756",
+                    url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
+                    )
+                time.sleep(60*2)
+            elif(escalationData.Action=="Message"):
+                yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
+                message_timestamp = datetime.now(timezone.utc)
+                message = client.messages.create(
+                    body=assignQuestion+f" If yes, please reply with '{yes3CharWord}'.",
+                    from_=twilio_number,
+                    to=tech_phone_number
+                )
+                while True:
+                    time.sleep(5)
+                    response = client.messages.list(
+                        from_=tech_phone_number,
+                        to=twilio_number,
+                        limit=1
+                    )
+                    message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                    if response:
+                        print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+                        latest_response = response[0]
+                        # voice_response_str == "1" or 
+                        if (
+                            latest_response.body.lower().strip() == yes3CharWord
+                            and latest_response.date_sent > message_timestamp
+                        ):
+                            message = client.messages.create(
+                                body=f" you have acknowledged the call {ticket_no}. Thank you",
+                                from_=twilio_number,
+                                to=tech_phone_number
+                            )
+                            serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                            # end of case
+                            return 
+                    else:
+                        print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+            localEscalation += 1
+            
 # twilio customize voice 
 @app.route("/voice/<ticket_no>", methods=['GET','POST'])
 def voice(ticket_no):
@@ -255,16 +311,19 @@ def voice(ticket_no):
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
         choice = request.values['Digits']
+        global responseList
 
         if choice == '1':
             resp.say('You have acknowledged the call. Good for you!')
+            resp.say('I did not get your response. ')
+            print(((int)(ticket_no.split("-")[1])))
+            print(responseList((int)(ticket_no.split("-")[1])))
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
         elif choice == '3':
             resp.say('You pressed replay voice ')
-            resp.redirect('/voice')
+            resp.redirect('/voice/<ticket_no>')
         else:
-            resp.say('I did not get your response. ')
             return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
