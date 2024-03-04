@@ -305,6 +305,7 @@ def voice(ticket_no):
             return str(resp)
         else:
             resp.say('I did not get your response. ')
+            return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To acknowledge, please press 1.')
