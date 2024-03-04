@@ -238,12 +238,12 @@ def assignCall(row):
                     if len(call_timestamps) != 0 and datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=callManagertime):
                         # text technician
                         message = client.messages.create(
-                            body=f" We have elevate the call to your service manager due to overtime.",
+                            body=f" We have elevate the call to your manager due to overtime.",
                             from_=twilio_number,
                             to=tech_phone_number
                         )
                         localEscalation += 1
-                        serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
+                        serverFunct.updateReport(row, localEscalation, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
                         break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
@@ -287,21 +287,34 @@ def assignCall(row):
                         print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                         latest_response = response[0]
                         # voice_response_str == "1" or 
-                        if (
-                            latest_response.body.lower().strip() == yes3CharWord
-                            and latest_response.date_sent > message_timestamp
-                        ):
-                            message = client.messages.create(
-                                body=f" you have acknowledged the call {ticket_no}. Thank you",
-                                from_=twilio_number,
-                                to=tech_phone_number
-                            )
-                            serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
-                            # end of case
-                            return 
+                    if (
+                        latest_response.body.lower().strip() == yes3CharWord
+                        and latest_response.date_sent > message_timestamp or responseArr[(int)(ticket_no.split("-")[1])] == 1
+                    ):
+                        message = client.messages.create(
+                            body=f" you have acknowledged the call {ticket_no}. Thank you",
+                            from_=twilio_number,
+                            to=tech_phone_number
+                        )
+                        responseArr[(int)(ticket_no.split("-")[1])] = None
+                        serverFunct.updateReport(row, localEscalation, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                        # end of case
+                        return 
                     else:
                         print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+            if (responseArr[(int)(ticket_no.split("-")[1])] == 1
+                ):
+                        message = client.messages.create(
+                            body=f" Please contact your manager!",
+                            from_=twilio_number,
+                            to=tech_phone_number
+                        )
+                        responseArr[(int)(ticket_no.split("-")[1])] = None
+                        serverFunct.updateReport(row, localEscalation, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                        # end of case
+                        return 
             localEscalation += 1
+            
             
 # twilio customize voice 
 @app.route("/voice/<ticket_no>", methods=['GET','POST'])
