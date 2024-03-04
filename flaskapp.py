@@ -304,16 +304,12 @@ def voice(ticket_no):
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
-        elif choice == '3':
-            gather.say(f'{callMessage}To acknowledge, please press 1. To replay voice please press 3.')
-            resp.say('You pressed replay voice ')
-            resp.redirect(f'/voice/{ticket_no}')
         else:
             resp.say('I did not get your response. ')
             return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
-    gather.say(f'{callMessage}To acknowledge, please press 1. To replay voice please press 3.')
+    gather.say(f'{callMessage}To acknowledge, please press 1.')
     resp.append(gather)
     resp.redirect(f'/voice/{ticket_no}')
     return str(resp)
