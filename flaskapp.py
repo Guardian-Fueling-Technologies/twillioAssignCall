@@ -15,20 +15,6 @@ import re
 from urllib.parse import quote
 from collections import namedtuple
 
-global twiliodf
-twiliodf = pd.DataFrame()
-global responseList
-responseList = [None] * 1000
-
-
-server = os.environ.get("serverGFT")
-database = os.environ.get("databaseGFT")
-username = os.environ.get("usernameGFT")
-password = os.environ.get("passwordGFT")
-SQLaddress = os.environ.get("addressGFT")
-account_sid = os.environ.get("account_sid")
-auth_token = os.environ.get("auth_token")
-
 class messageEditor():
     def read_number_digits(number):
         digits = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
@@ -218,8 +204,7 @@ def assignCall(row):
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
                     print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
-                    latest_response = response[0]
-                    # voice_response_str == "1" or 
+                    latest_response = response[0] or responseArr[(int)(ticket_no.split("-")[1])] == "1"
                     if (
                         latest_response.body.lower().strip() == yes3CharWord
                         and latest_response.date_sent > message_timestamp
@@ -316,8 +301,7 @@ def voice(ticket_no):
         if choice == '1':
             resp.say('You have acknowledged the call. Good for you!')
             resp.say('I did not get your response. ')
-            print(((int)(ticket_no.split("-")[1])))
-            print(responseList((int)(ticket_no.split("-")[1])))
+            responseArr[(int)(ticket_no.split("-")[1])] = 1
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
         elif choice == '3':
@@ -329,11 +313,29 @@ def voice(ticket_no):
     gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To acknowledge, please press 1. To replay voice please press 3.')
     resp.append(gather)
-    resp.redirect(f'/voice')
+    resp.redirect(f'/voice/<ticket_no>')
     return str(resp)
 
     
 if __name__ == "__main__":    
+    # global var and db info
+    global twiliodf
+    twiliodf = pd.DataFrame()
+    global responseArr
+    responseArr = [None] * 1000
+    server = os.environ.get("serverGFT")
+    database = os.environ.get("databaseGFT")
+    username = os.environ.get("usernameGFT")
+    password = os.environ.get("passwordGFT")
+    SQLaddress = os.environ.get("addressGFT")
+    account_sid = os.environ.get("account_sid")
+    auth_token = os.environ.get("auth_token")
+
+
     serverFunct.unUpdateStaging()
+    # ticketno sample 	
+    ticket_no = "240218-0020"
+    # serverFunct.updateProc(ticket_no, 1)
+    
     threading.Thread(target=serverFunct.getTwillioStaging, daemon=True).start()
     app.run(port=8000, host='0.0.0.0', threaded=True)
