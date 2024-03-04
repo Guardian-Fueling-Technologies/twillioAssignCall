@@ -214,7 +214,6 @@ def assignCall(row):
                             from_=twilio_number,
                             to=tech_phone_number
                         )
-                        global responseArr
                         responseArr[(int)(ticket_no.split("-")[1])] = 0
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         # end of case
