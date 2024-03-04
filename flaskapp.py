@@ -170,7 +170,6 @@ def progress():
 
 # Technician oncall independent thread function
 def assignCall(row):
-    global responseArr
     assignQuestion = row.get('text_Message', '')
     tech_phone_number = row.get('technician_NMBR', '')
     twilio_number = row.get('twilio_NMBR', '')
@@ -203,6 +202,7 @@ def assignCall(row):
                 )
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
+                    global responseArr
                     print(responseArr[(int)(ticket_no.split("-")[1])], response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                     latest_response = response[0] or responseArr[(int)(ticket_no.split("-")[1])] == 1
                     if (
@@ -214,6 +214,7 @@ def assignCall(row):
                             from_=twilio_number,
                             to=tech_phone_number
                         )
+                        global responseArr
                         responseArr[(int)(ticket_no.split("-")[1])] = 0
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         # end of case
@@ -297,17 +298,16 @@ def voice(ticket_no):
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
         choice = request.values['Digits']
-        global responseArr
 
         if choice == '1':
-            resp.say('You have acknowledged the call. Good for you!')
+            global responseArr
             responseArr[(int)(ticket_no.split("-")[1])] = 1
+            resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
-            # You can handle the response here or save it to a global variable if needed
         else:
             resp.say('I did not get your response. ')
 
-    gather = Gather(num_digits=1)
+    gather = Gather(timeout=5, num_digits=1)
     gather.say(f'{callMessage}To acknowledge, please press 1.')
     resp.append(gather)
     resp.redirect(f'/voice/{ticket_no}')
