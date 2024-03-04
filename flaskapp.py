@@ -300,7 +300,6 @@ def voice(ticket_no):
 
         if choice == '1':
             resp.say('You have acknowledged the call. Good for you!')
-            resp.say('I did not get your response. ')
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             return str(resp)
             # You can handle the response here or save it to a global variable if needed
@@ -308,6 +307,7 @@ def voice(ticket_no):
             resp.say('You pressed replay voice ')
             resp.redirect('/voice/<ticket_no>')
         else:
+            resp.say('I did not get your response. ')
             return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
