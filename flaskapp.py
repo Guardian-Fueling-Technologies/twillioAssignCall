@@ -306,9 +306,8 @@ def voice(ticket_no):
             # You can handle the response here or save it to a global variable if needed
         else:
             resp.say('I did not get your response. ')
-            return str(resp)
 
-    gather = Gather(timeout=5, num_digits=1)
+    gather = Gather(num_digits=1)
     gather.say(f'{callMessage}To acknowledge, please press 1.')
     resp.append(gather)
     resp.redirect(f'/voice/{ticket_no}')
