@@ -367,8 +367,8 @@ def voice(ticket_no):
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
         elif choice == '9':
-            print(f'/voice/{ticket_no}')
-            resp.redirect(f'/voice/{ticket_no}')
+            # print(f'/voice/{ticket_no}?callMessage={callMessage}')
+            resp.redirect(f'/voice/{ticket_no}?callMessage={callMessage}')
             return str(resp)
     gather = Gather(num_digits=1)
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
