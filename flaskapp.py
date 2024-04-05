@@ -263,7 +263,7 @@ def assignCall(row):
         else:
             escalationData = serverFunct.updateProc(ticket_no, localEscalation)
             if escalationData.Phone:
-                print(escalationData)
+                print(localEscalation, escalationData)
                 if(escalationData.Action=="Call"):
                     params = messageEditor.replace_numbers_with_spoken(escalationData.message)
                     encoded_params = quote(params)
@@ -274,7 +274,20 @@ def assignCall(row):
                         from_="+18556258756",
                         url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                         )
-                    time.sleep(60*2)
+                    while True:
+                        time.sleep(5)
+                        responseArr[(int)(ticket_no.split("-")[1])]
+                        if (responseArr[(int)(ticket_no.split("-")[1])] == 1):
+                            message = client.messages.create(
+                                body=f"you have acknowledge the call",
+                                from_=twilio_number,
+                                to=tech_phone_number,
+                            )
+                            responseArr[(int)(ticket_no.split("-")[1])] = None
+                            serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                            call_completed = True
+                            # end of case
+                            return 
                 elif(escalationData.Action=="Message"):
                     yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
                     message_timestamp = datetime.now(timezone.utc)
@@ -295,10 +308,8 @@ def assignCall(row):
                             print(response[0].body, datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                             latest_response = response[0]
                             # voice_response_str == "1" or 
-                        if (
-                            latest_response.body.lower().strip() == yes3CharWord
-                            and latest_response.date_sent > message_timestamp or responseArr[(int)(ticket_no.split("-")[1])] == 1
-                            ):
+                        if (latest_response.body.lower().strip() == yes3CharWord
+                            and latest_response.date_sent > message_timestamp or responseArr[(int)(ticket_no.split("-")[1])] == 1):
                             message = client.messages.create(
                                 body=f" you have acknowledged the call {ticket_no}. Thank you",
                                 from_=twilio_number,
@@ -310,17 +321,6 @@ def assignCall(row):
                             return 
                         else:
                             print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
-                if (responseArr[(int)(ticket_no.split("-")[1])] == 1
-                    ):
-                            message = client.messages.create(
-                                body=f" Please contact your manager!",
-                                from_=twilio_number,
-                                to=escalationData.Phone
-                            )
-                            responseArr[(int)(ticket_no.split("-")[1])] = None
-                            serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
-                            # end of case
-                            return 
                 localEscalation += 1
             else:
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
@@ -328,7 +328,7 @@ def assignCall(row):
             
             
 # twilio customize voice 
-@app.route("/voice/<ticket_no>", methods=['GET','POST'])
+@app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
 def voice(ticket_no):
     resp = VoiceResponse()
     callMessage = request.args.get('callMessage')
@@ -340,14 +340,18 @@ def voice(ticket_no):
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
+        elif choice == '9':
+            # User pressed '9' to repeat the message
+            resp.redirect(f'/voice/{ticket_no}')
+            return str(resp)
         else:
             resp.say('I did not get your response. ')
             return str(resp)
 
     gather = Gather(timeout=5, num_digits=1)
-    gather.say(f'{callMessage}To acknowledge, please press 1.')
+    gather.say(f'{callMessage}To acknowledge, please press 1. Press 9 to repeat.')
     resp.append(gather)
-    resp.redirect(f'/voice/{ticket_no}')
+    resp.redirect(f'/voice/{ticket_no}/?callMessage={callMessage}')
     return str(resp)
 
     
