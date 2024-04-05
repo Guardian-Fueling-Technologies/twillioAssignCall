@@ -370,7 +370,7 @@ def voice(ticket_no):
         elif choice == '9':
             params = messageEditor.replace_numbers_with_spoken(callMessage)
             encoded_params = quote(params)
-            resp.redirect(f'/voice/{ticket_no}?callMessage={callMessage}')
+            resp.redirect(f'/voice/{ticket_no}?callMessage={encoded_params}')
             return str(resp)
     gather = Gather(num_digits=1)
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
