@@ -276,7 +276,7 @@ def assignCall(row):
                     start_time = time.time()
                     while True:
                         time.sleep(5)
-                        print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
+                        print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], time.time() - start_time)
                         if (responseArr[(int)(ticket_no.split("-")[1])] == 1):
                             message = client.messages.create(
                                 body=f"you have acknowledge the call",
@@ -346,11 +346,7 @@ def voice(ticket_no):
             gather = Gather(num_digits=1)
             gather.say(f'{callMessage}')
             resp.append(gather)
-            resp.redirect(f'/voice/{ticket_no}')
-            return str(resp)
-        else:
-            resp.say('I did not get your response. ')
-            return str(resp)
+            return redirect(url_for('voice', ticket_no=ticket_no, callMessage=callMessage))
 
     gather = Gather(num_digits=1)
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
