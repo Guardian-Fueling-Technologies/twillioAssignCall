@@ -328,7 +328,32 @@ def assignCall(row):
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                 return
             
-            
+# @app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
+# def voice(ticket_no):
+#     resp = VoiceResponse()
+#     callMessage = request.args.get('callMessage')
+#     gather = Gather(num_digits=1, action='/gather/{ticket_no}')
+#     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
+#     resp.append(gather)
+#     return str(resp)
+
+
+# @app.route('/gather/<ticket_no>', methods=['GET', 'POST'])
+# def gather(ticket_no):
+#     resp = VoiceResponse()
+#     if 'Digits' in request.values:
+#         choice = request.values['Digits']
+
+#         if choice == '1':
+#             global responseArr
+#             resp.say('You selected sales. Good for you!')            
+#             responseArr[(int)(ticket_no.split("-")[1])] = 1
+#             resp.say('You have acknowledged the call. Good for you!')
+#             return str(resp)
+#         elif choice == '9':
+#             resp.redirect('/voice/{ticket_no}')
+#     return str(resp)
+
 # twilio customize voice 
 @app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
 def voice(ticket_no):
@@ -336,18 +361,14 @@ def voice(ticket_no):
     callMessage = request.args.get('callMessage')
     if 'Digits' in request.values:
         choice = request.values['Digits']
-
         if choice == '1':
             global responseArr
             responseArr[(int)(ticket_no.split("-")[1])] = 1
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
         elif choice == '9':
-            gather = Gather(num_digits=1)
-            gather.say(f'{callMessage}')
-            resp.append(gather)
-            return redirect(url_for('voice', ticket_no=ticket_no, callMessage=callMessage))
-
+            resp.redirect('/voice/{ticket_no}')
+            return str(resp)
     gather = Gather(num_digits=1)
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
     resp.append(gather)
