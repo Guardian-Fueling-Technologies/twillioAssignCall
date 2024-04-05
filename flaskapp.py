@@ -340,7 +340,7 @@ def voice(ticket_no):
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
         elif choice == '9':
-            resp.redirect(f'/voice/{ticket_no}/?callMessage={callMessage}')
+            resp.redirect(f'/voice/{ticket_no}')
             return str(resp)
         else:
             resp.say('I did not get your response. ')
