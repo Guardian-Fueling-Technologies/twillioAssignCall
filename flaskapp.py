@@ -268,8 +268,8 @@ def assignCall(row):
                     encoded_params = quote(params)
                     # print(encoded_params)
                     call = client.calls.create(
-                        # to=escalationData.Phone,
-                        to=tech_phone_number,
+                        to=escalationData.Phone,
+                        # to=tech_phone_number,
                         from_="+18556258756",
                         url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                         )
@@ -279,9 +279,10 @@ def assignCall(row):
                         print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], time.time() - start_time)
                         if (responseArr[(int)(ticket_no.split("-")[1])] == 1):
                             message = client.messages.create(
-                                body=f"you have acknowledge the call",
+                                body=f"you have acknowledged the call {ticket_no}. Thank you",
                                 from_=twilio_number,
-                                to=tech_phone_number,
+                                to=escalationData.Phone,
+                                # to=tech_phone_number,
                             )
                             responseArr[(int)(ticket_no.split("-")[1])] = None
                             serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
@@ -369,7 +370,7 @@ def voice(ticket_no):
         elif choice == '9':
             params = messageEditor.replace_numbers_with_spoken(callMessage)
             encoded_params = quote(params)
-            resp.redirect(f'/voice/{ticket_no}?callMessage={encoded_params}')
+            resp.redirect(f'/voice/{ticket_no}?callMessage={callMessage}')
             return str(resp)
     gather = Gather(num_digits=1)
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
