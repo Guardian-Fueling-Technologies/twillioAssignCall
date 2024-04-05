@@ -273,6 +273,7 @@ def assignCall(row):
                         from_="+18556258756",
                         url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                         )
+                    start_time = time.time()
                     while True:
                         time.sleep(5)
                         print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
@@ -287,6 +288,8 @@ def assignCall(row):
                             call_completed = True
                             # end of case
                             return 
+                        if time.time() - start_time >= 120:
+                            break
                 elif(escalationData.Action=="Message"):
                     yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
                     message_timestamp = datetime.now(timezone.utc)
@@ -340,17 +343,20 @@ def voice(ticket_no):
             resp.say('You have acknowledged the call. Good for you!')
             return str(resp)
         elif choice == '9':
-            # gather.say(f'{callMessage}')
-            resp.redirect(f'/voice/{ticket_no}?callMessage={callMessage}')
+            gather = Gather(num_digits=1)
+            gather.say(f'{callMessage}')
+            resp.append(gather)
+            resp.redirect(f'/voice/{ticket_no}')
             return str(resp)
         else:
             resp.say('I did not get your response. ')
             return str(resp)
 
     gather = Gather(num_digits=1)
-    gather.say(f'{callMessage}To acknowledge, please press 1. Press 9 to repeat.')
+    gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
     resp.append(gather)
     return str(resp)
+
 
     
 if __name__ == "__main__":   
