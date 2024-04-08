@@ -45,6 +45,7 @@ class serverFunct():
     def getTwillioStaging():
         while True:
             try:
+                print("here")
                 conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
                 conn = pyodbc.connect(conn_str)
                 cursor = conn.cursor()
