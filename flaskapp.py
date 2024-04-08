@@ -44,56 +44,57 @@ class messageEditor():
 class serverFunct():
     def getTwillioStaging():
         while True:
-            conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-            conn = pyodbc.connect(conn_str)
-            cursor = conn.cursor()
+            try:
+                conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+                conn = pyodbc.connect(conn_str)
+                cursor = conn.cursor()
 
-            sql_query = '''
-            SELECT
-						 [text_Message]
-						,[voice_Message]
-						,[Ack_Message]
-						,[overTime_message]
-						,[Max_Escalations]
-						,[Processed]
-						,[ticket_no]
-						,[Technician_ID]
-						,[technician_NMBR]
-						,[twilio_NMBR]
-						,[status]
-						,[message_timestamp]
-						,[response_timestamp]
-						,[calltime]
-						,[escalation_time]
-						,[LastUpdated]
-					FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
-					WHERE Technician_ID = 'CAR426'
-            '''
-            # origin
-            # FROM [GFT].[dbo].[MR_Staging_TwilioOnCall] WITH(NOLOCK)
-            # WHERE [technician_NMBR] <> ? AND Processed <> 1;
-            # cursor.execute(sql_query, "None")
+                sql_query = '''
+                SELECT
+                                 [text_Message]
+                                ,[voice_Message]
+                                ,[Ack_Message]
+                                ,[overTime_message]
+                                ,[Max_Escalations]
+                                ,[Processed]
+                                ,[ticket_no]
+                                ,[Technician_ID]
+                                ,[technician_NMBR]
+                                ,[twilio_NMBR]
+                                ,[status]
+                                ,[message_timestamp]
+                                ,[response_timestamp]
+                                ,[calltime]
+                                ,[escalation_time]
+                                ,[LastUpdated]
+                            FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
+                            WHERE Technician_ID = 'CAR426'
+                '''
 
-            cursor.execute(sql_query)
-            columns = [column[0] for column in cursor.description]
+                cursor.execute(sql_query)
+                columns = [column[0] for column in cursor.description]
 
-            result = cursor.fetchall()
-            data = [list(row) for row in result]
+                result = cursor.fetchall()
+                data = [list(row) for row in result]
+
+                global twiliodf
+                twiliodf = pd.DataFrame(data, columns=columns)
+                update_query = '''
+                    UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+                    SET Processed = 1
+                    WHERE Processed <> 1;
+                '''
+
+                cursor.execute(update_query)
+                conn.commit()
+                cursor.close()
+                conn.close()
+                print("processed also update", twiliodf)
+            except Exception as e:
+                print(f"An error occurred: {e}")
             
-            global twiliodf
-            twiliodf = pd.DataFrame(data, columns=columns)
-            update_query = '''
-                UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
-                SET Processed = 1
-                WHERE Processed <> 1;
-            '''
-
-            cursor.execute(update_query)
-            conn.commit()
-            cursor.close()
-            conn.close()
-            print("processed also update", twiliodf)
-            time.sleep(60*7)
+            time.sleep(60)
+            
     def unUpdateStaging():
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
         conn = pyodbc.connect(conn_str)
@@ -328,33 +329,7 @@ def assignCall(row):
             else:
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                 return
-            
-# @app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
-# def voice(ticket_no):
-#     resp = VoiceResponse()
-#     callMessage = request.args.get('callMessage')
-#     gather = Gather(num_digits=1, action='/gather/{ticket_no}')
-#     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
-#     resp.append(gather)
-#     return str(resp)
-
-
-# @app.route('/gather/<ticket_no>', methods=['GET', 'POST'])
-# def gather(ticket_no):
-#     resp = VoiceResponse()
-#     if 'Digits' in request.values:
-#         choice = request.values['Digits']
-
-#         if choice == '1':
-#             global responseArr
-#             resp.say('You selected sales. Good for you!')            
-#             responseArr[(int)(ticket_no.split("-")[1])] = 1
-#             resp.say('You have acknowledged the call. Good for you!')
-#             return str(resp)
-#         elif choice == '9':
-#             resp.redirect('/voice/{ticket_no}')
-#     return str(resp)
-
+        
 # twilio customize voice 
 @app.route("/voice/<ticket_no>", methods=['GET', 'POST'])
 def voice(ticket_no):
@@ -387,5 +362,4 @@ if __name__ == "__main__":
     threading.Thread(target=serverFunct.getTwillioStaging, daemon=True).start()
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', None)
-    # print(serverFunct.getTwillioStaging)
     app.run(port=8000, host='0.0.0.0', threaded=True)
