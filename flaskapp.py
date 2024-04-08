@@ -360,6 +360,7 @@ if __name__ == "__main__":
     # ticketno sample 	
     # ticket_no = "240218-0020"
     # serverFunct.updateProc(ticket_no, 1)
+    print("here1")
     threading.Thread(target=serverFunct.getTwillioStaging, daemon=True).start()
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', None)
