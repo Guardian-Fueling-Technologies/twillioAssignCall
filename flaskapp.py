@@ -45,7 +45,6 @@ class serverFunct():
     def getTwillioStaging():
         while True:
             try:
-                print("here")
                 conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
                 conn = pyodbc.connect(conn_str)
                 cursor = conn.cursor()
@@ -92,9 +91,8 @@ class serverFunct():
                 conn.close()
                 print("processed also update", twiliodf)
             except Exception as e:
-                print(f"An error occurred: {e}")
-            
-            time.sleep(60)
+                print(f"An error occurred: {e}")  
+            time.sleep(60*7)
             
     def unUpdateStaging():
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
@@ -360,7 +358,6 @@ if __name__ == "__main__":
     # ticketno sample 	
     # ticket_no = "240218-0020"
     # serverFunct.updateProc(ticket_no, 1)
-    print("here1")
     threading.Thread(target=serverFunct.getTwillioStaging, daemon=True).start()
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', None)
