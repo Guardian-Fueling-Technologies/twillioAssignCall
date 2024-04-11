@@ -92,7 +92,7 @@ class serverFunct():
                 print("processed also update", twiliodf)
             except Exception as e:
                 print(f"An error occurred: {e}")  
-            time.sleep(60*7)
+            time.sleep(60)
             
     def unUpdateStaging():
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
