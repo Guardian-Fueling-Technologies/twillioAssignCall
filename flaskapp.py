@@ -9,6 +9,7 @@ import random
 import string
 import pyodbc
 import pandas as pd
+import pytz
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 import re
@@ -20,6 +21,10 @@ global twiliodf
 twiliodf = pd.DataFrame()
 global responseArr
 responseArr = [None] * 1000
+global tz
+tz = pytz.timezone('America/New_York')
+
+# configured global var
 server = os.environ.get("serverGFT")
 database = os.environ.get("databaseGFT")
 username = os.environ.get("usernameGFT")
@@ -44,56 +49,66 @@ class messageEditor():
 class serverFunct():
     def getTwillioStaging():
         while True:
-            try:
-                conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-                conn = pyodbc.connect(conn_str)
-                cursor = conn.cursor()
+            tz = pytz.timezone('America/New_York')
+            utc_now = datetime.utcnow()
+            est_now = utc_now.replace(tzinfo=pytz.utc).astimezone(tz)
+            start_time = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0).time()
+            end_time = datetime.now().replace(hour=18, minute=0, second=0, microsecond=0).time()
+            if start_time <= est_now.time() <= end_time:
+                try:
+                    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+                    conn = pyodbc.connect(conn_str)
+                    cursor = conn.cursor()
 
-                sql_query = '''
-                SELECT
-                                 [text_Message]
-                                ,[voice_Message]
-                                ,[Ack_Message]
-                                ,[overTime_message]
-                                ,[Max_Escalations]
-                                ,[Processed]
-                                ,[ticket_no]
-                                ,[Technician_ID]
-                                ,[technician_NMBR]
-                                ,[twilio_NMBR]
-                                ,[status]
-                                ,[message_timestamp]
-                                ,[response_timestamp]
-                                ,[calltime]
-                                ,[escalation_time]
-                                ,[LastUpdated]
-                            FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
-                            WHERE Technician_ID = 'CAR426'
-                '''
+                    sql_query = '''
+                    SELECT TOP 2
+                        [text_Message]
+                        ,[voice_Message]
+                        ,[Ack_Message]
+                        ,[overTime_message]
+                        ,[Max_Escalations]
+                        ,[Processed]
+                        ,[ticket_no]
+                        ,[Technician_ID]
+                        ,[technician_NMBR]
+                        ,[twilio_NMBR]
+                        ,[status]
+                        ,[message_timestamp]
+                        ,[response_timestamp]
+                        ,[calltime]
+                        ,[escalation_time]
+                        ,[LastUpdated]
+                    FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
+                    WHERE Technician_ID = 'CAR426'
+                    ORDER BY message_timestamp DESC;
+                    '''
 
-                cursor.execute(sql_query)
-                columns = [column[0] for column in cursor.description]
+                    cursor.execute(sql_query)
+                    columns = [column[0] for column in cursor.description]
 
-                result = cursor.fetchall()
-                data = [list(row) for row in result]
+                    result = cursor.fetchall()
+                    data = [list(row) for row in result]
 
-                global twiliodf
-                twiliodf = pd.DataFrame(data, columns=columns)
-                update_query = '''
-                    UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
-                    SET Processed = 1
-                    WHERE Processed <> 1;
-                '''
+                    global twiliodf
+                    twiliodf = pd.DataFrame(data, columns=columns)
+                    update_query = '''
+                        UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+                        SET Processed = 1
+                        WHERE Processed <> 1;
+                    '''
 
-                cursor.execute(update_query)
-                conn.commit()
-                cursor.close()
-                conn.close()
-                print("processed also update", twiliodf)
-            except Exception as e:
-                print(f"An error occurred: {e}")  
+                    cursor.execute(update_query)
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
+                    print(est_now, "processed also update", twiliodf)
+                except Exception as e:
+                    print(f"An error occurred: {e}")  
+                progress()
+            else:
+                print(est_now, "out of hour")
             time.sleep(60*7)
-            
+
     def unUpdateStaging():
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
         conn = pyodbc.connect(conn_str)
@@ -182,7 +197,7 @@ def progress():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
         assign_thread.start()    
-    return render_template('html/call.html')
+    # return render_template('html/call.html')
 
 # Technician oncall independent thread function
 def assignCall(row):
