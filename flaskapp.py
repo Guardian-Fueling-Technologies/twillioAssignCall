@@ -53,7 +53,7 @@ class serverFunct():
             utc_now = datetime.utcnow()
             est_now = utc_now.replace(tzinfo=pytz.utc).astimezone(tz)
             start_time = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0).time()
-            end_time = datetime.now().replace(hour=18, minute=0, second=0, microsecond=0).time()
+            end_time = datetime.now().replace(hour=17, minute=0, second=0, microsecond=0).time()
             if start_time <= est_now.time() <= end_time:
                 try:
                     conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
