@@ -90,7 +90,10 @@ class serverFunct():
                     data = [list(row) for row in result]
 
                     global twiliodf
-                    twiliodf = pd.DataFrame(data, columns=columns)
+                    if twiliodf is not None and not twiliodf.empty:
+                        twiliodf = twiliodf.append(data, ignore_index=True)
+                    else:                    
+                        twiliodf = pd.DataFrame(data, columns=columns)
                     update_query = '''
                         UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
                         SET Processed = 1
@@ -189,14 +192,18 @@ def main_page():
         return render_template('html/mainNoData.html')
 
 # initial thread for tehnician oncall
-@app.route('/progress', methods=['GET', 'POST'])
+@app.route('/visual/progress', methods=['GET', 'POST'])
+def visualprogress():
+    global twiliodf
+    return render_template('html/call.html', twiliodf=twiliodf)
+
 def progress():
     threads = []
     global twiliodf
     for index, row in twiliodf.iterrows():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
-        assign_thread.start()    
+        assign_thread.start()
     # return render_template('html/call.html')
 
 # Technician oncall independent thread function
@@ -210,7 +217,6 @@ def assignCall(row):
     Max_Escalations = row.get('Max_Escalations', '')
     client = Client(account_sid, auth_token)
     call_timestamps = []
-    # first time message method
     localEscalation = 0
     escalationData = ()
     while localEscalation <= Max_Escalations:
@@ -231,6 +237,7 @@ def assignCall(row):
                     to=twilio_number,
                     limit=1
                 )
+                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 1
                 
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
@@ -247,7 +254,9 @@ def assignCall(row):
                             to=tech_phone_number
                         )
                         responseArr[(int)(ticket_no.split("-")[1])] = None
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                        twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         # end of case
                         return 
                 else:
@@ -262,7 +271,9 @@ def assignCall(row):
                             to=tech_phone_number
                         )
                         localEscalation += 1
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
                         serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
+                        twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
@@ -274,6 +285,8 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                             )
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 2
+                    
         else:
             escalationData = serverFunct.updateProc(ticket_no, localEscalation)
             if escalationData.Phone:
@@ -300,10 +313,12 @@ def assignCall(row):
                                 # to=tech_phone_number,
                             )
                             responseArr[(int)(ticket_no.split("-")[1])] = None
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                             serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
-                            call_completed = True
+                            twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
                             return 
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
                         if time.time() - start_time >= 120:
                             break
                 elif(escalationData.Action=="Message"):
@@ -334,14 +349,18 @@ def assignCall(row):
                                 to=escalationData.Phone
                             )
                             responseArr[(int)(ticket_no.split("-")[1])] = None
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                             serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                            twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
                             return 
                         else:
                             print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 localEscalation += 1
             else:
+                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
+                twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                 return
         
 # twilio customize voice 

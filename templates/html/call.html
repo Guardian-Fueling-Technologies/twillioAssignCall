@@ -35,61 +35,36 @@
 <body>
     <h1>Main Page</h1>
     <div id="voice-response-container"></div>
-
-    <div id="progress-bars">
-        <h2>Technician Phone: </h2>
-        <ol class="progress">
-            <span class="progress progress--counter">
-                <li class="progress__step progress__step--active">Messaging Technician (TechnicianID)</li>
-                <li class="progress__step">Waiting for Technician to response</li>
-                <li class="progress__step">Calling Technician</li>
-                <li class="progress__step">Waiting for Technician to response</li>
-                <li class="progress__step">Elevating & Calling Manager</li>
-            </span>
-        </ol>
-
+    {% for index, row in twiliodf.iterrows() %}
+    <div class="work-order">
+        <h2>Work Order {{ row['ticket_no'] }}</h2>
         <div id="progress-bars">
-            <h2>Technician Phone: </h2>
+            <h2>Technician Phone: {{ row['technician_NMBR'] }}</h2>
+            <h2>Technician status: {{ row['status']  }}</h2>
             <ol class="progress">
                 <span class="progress progress--counter">
-                    <li class="progress__step progress__step--active">Messaging Technician (TechnicianID)</li>
-                    <li class="progress__step">Waiting for Technician to response</li>
-                    <li class="progress__step">Calling Technician</li>
-                    <li class="progress__step">Waiting for Technician to response</li>
-                    <li class="progress__step">Elevating & Calling Manager</li>
+                    {% set steps = [
+                        "Ticket Start",
+                        "Messaging Technician " ~ row['Technician_ID'],
+                        "Waiting for Technician to response",
+                        "Calling Technician",
+                        "Elevating & Calling Manager",
+                        "Waiting Escalation Path",
+                        "Escalation Email Sent",
+                        "Ticket End"
+                    ] %}
+                    {% for step in steps %}
+                    <li class="progress__step {% if loop.index0 == row['status'] %}progress__step--active{% else %}inactive{% endif %}">
+                        {{ step }}
+                    </li>
+                {% endfor %}
+
+                    
                 </span>
             </ol>
-            <div id="progress-bars">
-                <h2>Technician Phone: or id</h2>
-                <ol class="progress">
-                    <span class="progress progress--counter">
-                        <li class="progress__step">Messaging Technician (TechnicianID)</li>
-                        <li class="progress__step">Waiting for Technician to response</li>
-                        <li class="progress__step progress__step--active">Calling Technician</li>
-                        <li class="progress__step">Waiting for Technician to response</li>
-                        <li class="progress__step">Elevating & Calling Manager</li>
-                    </span>
-                </ol>
-                <div id="progress-bars">
-                    <h2>Technician Phone: dafsf</h2>
-                    <ol class="progress">
-                        <span class="progress progress--counter">
-                            <li class="progress__step">Messaging Technician (TechnicianID)</li>
-                            <li class="progress__step">Waiting for Technician to response</li>
-                            <li class="progress__step">Calling Technician</li>
-                            <li class="progress__step progress__step--active">Waiting for Technician to response</li>
-                            <li class="progress__step">Elevating & Calling Manager</li>
-                        </span>
-                    </ol>
-
-                    <form method="post" action="{{ url_for('progress') }}">
-                        <button type="submit" class="assign-call-button">Assign Calls</button>
-                    </form>
-                </div>
-                <br>
-                <br>
-                <br>
-                <a href="{{ url_for('main_page') }}" class="assign-call-button">Back to Main Page</a>
+        </div>
+    </div>
+    {% endfor %}
 </body>
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
