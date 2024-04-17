@@ -361,7 +361,7 @@ def voice(ticket_no):
             encoded_params = quote(params)
             resp.redirect(f'/voice/{ticket_no}?callMessage={encoded_params}')
             return str(resp)
-    gather = Gather(num_digits=1)
+    gather = Gather(num_digits=1, finishOnKey="")
     gather.say(f'{callMessage} To acknowledge, please press 1. Press 9 to repeat.')
     resp.append(gather)
     return str(resp)
