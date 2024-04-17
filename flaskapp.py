@@ -79,7 +79,7 @@ class serverFunct():
                         ,[escalation_time]
                         ,[LastUpdated]
                     FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
-                    WHERE Technician_ID = 'CAR426'
+                    WHERE Technician_ID = 'CAR426' AND Processed <> 1
                     ORDER BY message_timestamp DESC;
                     '''
 
