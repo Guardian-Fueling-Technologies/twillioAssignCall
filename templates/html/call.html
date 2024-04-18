@@ -38,9 +38,8 @@
     {% for index, row in twiliodf.iterrows() %}
     <div class="work-order">
         <h2>Work Order {{ row['ticket_no'] }}</h2>
-        <div id="progress-bars">
+        <div id="progress-bars-{{ row['ticket_no'] }}">
             <h2>Technician Phone: {{ row['technician_NMBR'] }}</h2>
-            <h2>Technician status: {{ row['status']  }}</h2>
             <ol class="progress">
                 <span class="progress progress--counter">
                     {% set steps = [
@@ -54,21 +53,40 @@
                         "Ticket End"
                     ] %}
                     {% for step in steps %}
-                    <li class="progress__step {% if loop.index0 == row['status'] %}progress__step--active{% else %}inactive{% endif %}">
-                        {{ step }}
-                    </li>
-                {% endfor %}
-
-                    
+                        <li class="progress__step {% if loop.index0 == row['status'] %}progress__step--active{% else %}inactive{% endif %}">
+                            {{ step }}
+                        </li>
+                    {% endfor %}
                 </span>
             </ol>
         </div>
     </div>
     {% endfor %}
 </body>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script>
+    $(document).ready(function () {
+        function fetchProgress(ticketNo) {
+            $.ajax({
+                url: '/api/progress_data/' + ticketNo, // Endpoint to fetch progress data for a specific ticket
+                type: 'GET',
+                success: function (data) {
+                    // Update the progress steps for the corresponding ticket
+                    $('#progress-bars-' + ticketNo + ' .progress').html(data.progress_html);
+                },
+                error: function (error) {
+                    console.error('Error fetching progress data:', error);
+                }
+            });
+        }
 
-<!-- JavaScript to fetch and update the voice response -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+        // Fetch progress data for each ticket every 5 seconds
+        {% for index, row in twiliodf.iterrows() %}
+            fetchProgress('{{ row["ticket_no"] }}');
+            setInterval(function() {
+                fetchProgress('{{ row["ticket_no"] }}');
+            }, 5000);
+        {% endfor %}
+    });
+</script>
 
 </html>

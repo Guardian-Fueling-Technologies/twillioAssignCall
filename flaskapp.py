@@ -21,8 +21,6 @@ global twiliodf
 twiliodf = pd.DataFrame()
 global responseArr
 responseArr = [None] * 1000
-global tz
-tz = pytz.timezone('America/New_York')
 
 # configured global var
 server = os.environ.get("serverGFT")
@@ -49,68 +47,60 @@ class messageEditor():
 class serverFunct():
     def getTwillioStaging():
         while True:
-            tz = pytz.timezone('America/New_York')
-            utc_now = datetime.utcnow()
-            est_now = utc_now.replace(tzinfo=pytz.utc).astimezone(tz)
-            start_time = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0).time()
-            end_time = datetime.now().replace(hour=17, minute=0, second=0, microsecond=0).time()
-            if start_time <= est_now.time() <= end_time:
-                try:
-                    conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
-                    conn = pyodbc.connect(conn_str)
-                    cursor = conn.cursor()
+            try:
+                conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
+                conn = pyodbc.connect(conn_str)
+                cursor = conn.cursor()
 
-                    sql_query = '''
-                    SELECT TOP 2
-                        [text_Message]
-                        ,[voice_Message]
-                        ,[Ack_Message]
-                        ,[overTime_message]
-                        ,[Max_Escalations]
-                        ,[Processed]
-                        ,[ticket_no]
-                        ,[Technician_ID]
-                        ,[technician_NMBR]
-                        ,[twilio_NMBR]
-                        ,[status]
-                        ,[message_timestamp]
-                        ,[response_timestamp]
-                        ,[calltime]
-                        ,[escalation_time]
-                        ,[LastUpdated]
-                    FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
-                    WHERE Technician_ID = 'CAR426' AND Processed <> 1
-                    ORDER BY message_timestamp DESC;
-                    '''
+                sql_query = '''
+                SELECT TOP 2
+                    [text_Message]
+                    ,[voice_Message]
+                    ,[Ack_Message]
+                    ,[overTime_message]
+                    ,[Max_Escalations]
+                    ,[Processed]
+                    ,[ticket_no]
+                    ,[Technician_ID]
+                    ,[technician_NMBR]
+                    ,[twilio_NMBR]
+                    ,[status]
+                    ,[message_timestamp]
+                    ,[response_timestamp]
+                    ,[calltime]
+                    ,[escalation_time]
+                    ,[LastUpdated]
+                FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
+                WHERE Technician_ID = 'CAR426' AND Processed <> 1
+                ORDER BY message_timestamp DESC;
+                '''
 
-                    cursor.execute(sql_query)
-                    columns = [column[0] for column in cursor.description]
+                cursor.execute(sql_query)
+                columns = [column[0] for column in cursor.description]
 
-                    result = cursor.fetchall()
-                    data = [list(row) for row in result]
+                result = cursor.fetchall()
+                data = [list(row) for row in result]
 
-                    global twiliodf
-                    if twiliodf is not None and not twiliodf.empty:
-                        twiliodf = twiliodf.append(data, ignore_index=True)
-                    else:                    
-                        twiliodf = pd.DataFrame(data, columns=columns)
-                    update_query = '''
-                        UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
-                        SET Processed = 1
-                        WHERE Processed <> 1;
-                    '''
+                global twiliodf
+                if twiliodf is not None and not twiliodf.empty:
+                    twiliodf = pd.concat([twiliodf, data], ignore_index=True)
+                else:                    
+                    twiliodf = pd.DataFrame(data, columns=columns)
+                update_query = '''
+                    UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+                    SET Processed = 1
+                    WHERE Processed <> 1;
+                '''
 
-                    cursor.execute(update_query)
-                    conn.commit()
-                    cursor.close()
-                    conn.close()
-                    print(est_now, "processed also update", twiliodf)
-                except Exception as e:
-                    print(f"An error occurred: {e}")  
-                progress()
-            else:
-                print(est_now, "out of hour")
-            time.sleep(60*7)
+                cursor.execute(update_query)
+                conn.commit()
+                cursor.close()
+                conn.close()
+                print("processed also update", twiliodf)
+            except Exception as e:
+                print(f"An error occurred: {e}")  
+            progress()
+            time.sleep(60)
 
     def unUpdateStaging():
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
@@ -126,6 +116,7 @@ class serverFunct():
         conn.commit()
         cursor.close()
         conn.close()
+
     # return namedtuple
     def updateProc(ticket_no, order):
         conn_str = f"DRIVER={SQLaddress};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;"
@@ -191,8 +182,9 @@ def main_page():
     else:
         return render_template('html/mainNoData.html')
 
+
 # initial thread for tehnician oncall
-@app.route('/visual/progress', methods=['GET', 'POST'])
+@app.route('/visual/progress', methods=['GET'])
 def visualprogress():
     global twiliodf
     return render_template('html/call.html', twiliodf=twiliodf)
@@ -200,7 +192,8 @@ def visualprogress():
 def progress():
     threads = []
     global twiliodf
-    for index, row in twiliodf.iterrows():
+    twiliodf_filtered = twiliodf[twiliodf['status'] == 0]
+    for index, row in twiliodf_filtered.iterrows():
         assign_thread = threading.Thread(target=assignCall, args=(row,))
         threads.append(assign_thread)
         assign_thread.start()
@@ -219,6 +212,9 @@ def assignCall(row):
     call_timestamps = []
     localEscalation = 0
     escalationData = ()
+    
+    global twiliodf
+    twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 1
     while localEscalation <= Max_Escalations:
         if localEscalation == 0:
             yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
@@ -237,7 +233,7 @@ def assignCall(row):
                     to=twilio_number,
                     limit=1
                 )
-                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 1
+                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 2
                 
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
@@ -271,7 +267,7 @@ def assignCall(row):
                             to=tech_phone_number
                         )
                         localEscalation += 1
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
                         serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
                         twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         break
@@ -285,7 +281,7 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                             )
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 2
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
                     
         else:
             escalationData = serverFunct.updateProc(ticket_no, localEscalation)
@@ -318,7 +314,7 @@ def assignCall(row):
                             twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
                             return 
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
                         if time.time() - start_time >= 120:
                             break
                 elif(escalationData.Action=="Message"):
@@ -358,7 +354,7 @@ def assignCall(row):
                             print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 localEscalation += 1
             else:
-                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
+                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 7
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                 twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                 return
