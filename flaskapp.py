@@ -255,7 +255,6 @@ def assignCall(row):
                         )
                         localEscalation += 1
                         serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
-                        twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
