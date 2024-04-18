@@ -81,7 +81,7 @@ class serverFunct():
                 print("processed also update", twiliodf)
             except Exception as e:
                 print(f"An error occurred: {e}")  
-            # progress()
+            progress()
             time.sleep(60*7)
 
     def unUpdateStaging():
