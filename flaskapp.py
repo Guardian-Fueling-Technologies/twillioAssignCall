@@ -63,7 +63,7 @@ class serverFunct():
                 data = [list(row) for row in result]
 
                 global twiliodf
-                if twiliodf is not None and not twiliodf.empty and not data.empty:
+                if twiliodf is not None and not twiliodf.empty and len(data) != 0 :
                     new_data_df = pd.DataFrame(data, columns=columns)
                     twiliodf = pd.concat([twiliodf, new_data_df], ignore_index=True)
                 else:                    
@@ -81,7 +81,7 @@ class serverFunct():
                 print("processed also update", twiliodf)
             except Exception as e:
                 print(f"An error occurred: {e}")  
-            # progress()
+            progress()
             time.sleep(60*7)
 
     def unUpdateStaging():
@@ -174,11 +174,15 @@ def visualprogress():
 def progress():
     threads = []
     global twiliodf
-    twiliodf_filtered = twiliodf[twiliodf['status'] == 0]
-    for index, row in twiliodf_filtered.iterrows():
-        assign_thread = threading.Thread(target=assignCall, args=(row,))
-        threads.append(assign_thread)
-        assign_thread.start()
+    if not twiliodf.empty:
+        twiliodf_filtered = twiliodf[twiliodf['status'] == 0]
+        for index, row in twiliodf_filtered.iterrows():
+            assign_thread = threading.Thread(target=assignCall, args=(row,))
+            threads.append(assign_thread)
+            assign_thread.start()
+    else:
+        print("Empty dataframe")
+
     # return render_template('html/call.html')
 
 # Technician oncall independent thread function
@@ -281,7 +285,7 @@ def assignCall(row):
                         )
                     start_time = time.time()
                     while True:
-                        if(twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] == 4):
+                        if (twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] == 4).any():
                             twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
                         else:
                             twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
