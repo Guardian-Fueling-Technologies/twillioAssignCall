@@ -281,6 +281,10 @@ def assignCall(row):
                         )
                     start_time = time.time()
                     while True:
+                        if(twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] == 4):
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
+                        else:
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
                         time.sleep(5)
                         print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], time.time() - start_time)
                         if (responseArr[(int)(ticket_no.split("-")[1])] == 1):
@@ -296,7 +300,6 @@ def assignCall(row):
                             twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
                             return 
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
                         if time.time() - start_time >= 120:
                             break
                 elif(escalationData.Action=="Message"):
@@ -366,7 +369,7 @@ def voice(ticket_no):
 
     
 if __name__ == "__main__":   
-    serverFunct.unUpdateStaging()
+    # serverFunct.unUpdateStaging()
     # ticketno sample 	
     # ticket_no = "240218-0020"
     # serverFunct.updateProc(ticket_no, 1)
