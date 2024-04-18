@@ -53,26 +53,7 @@ class serverFunct():
                 cursor = conn.cursor()
 
                 sql_query = '''
-                SELECT TOP 2
-                    [text_Message]
-                    ,[voice_Message]
-                    ,[Ack_Message]
-                    ,[overTime_message]
-                    ,[Max_Escalations]
-                    ,[Processed]
-                    ,[ticket_no]
-                    ,[Technician_ID]
-                    ,[technician_NMBR]
-                    ,[twilio_NMBR]
-                    ,[status]
-                    ,[message_timestamp]
-                    ,[response_timestamp]
-                    ,[calltime]
-                    ,[escalation_time]
-                    ,[LastUpdated]
-                FROM [MR_Staging_TwilioOnCall] WITH(NOLOCK)
-                WHERE Technician_ID = 'CAR426' AND Processed <> 1
-                ORDER BY message_timestamp DESC;
+                EXEC [dbo].[MR_P_TwilioOnCall] @Technician_ID = 'CAR426';
                 '''
 
                 cursor.execute(sql_query)
@@ -82,8 +63,9 @@ class serverFunct():
                 data = [list(row) for row in result]
 
                 global twiliodf
-                if twiliodf is not None and not twiliodf.empty:
-                    twiliodf = pd.concat([twiliodf, data], ignore_index=True)
+                if twiliodf is not None and not twiliodf.empty and not data.empty:
+                    new_data_df = pd.DataFrame(data, columns=columns)
+                    twiliodf = pd.concat([twiliodf, new_data_df], ignore_index=True)
                 else:                    
                     twiliodf = pd.DataFrame(data, columns=columns)
                 update_query = '''
@@ -261,18 +243,19 @@ def assignCall(row):
                 if datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=firstdelaytime):
                     if len(call_timestamps) != 0 and datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=escalation_time):
                         # text technician
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
                         message = client.messages.create(
                             body=f" We have elevate the call to your manager due to overtime.",
                             from_=twilio_number,
                             to=tech_phone_number
                         )
                         localEscalation += 1
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
                         serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
                         twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
+                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
                         call_timestamps.append(datetime.now(timezone.utc))
                         params = messageEditor.replace_numbers_with_spoken(row.get('voice_Message', ''))
                         encoded_params = quote(params)
@@ -281,7 +264,6 @@ def assignCall(row):
                             from_="+18556258756",
                             url = f"https://twilliocall.guardianfueltech.com/voice/{ticket_no}?callMessage={encoded_params}"
                             )
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
                     
         else:
             escalationData = serverFunct.updateProc(ticket_no, localEscalation)
