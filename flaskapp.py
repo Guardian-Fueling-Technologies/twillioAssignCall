@@ -21,6 +21,7 @@ global twiliodf
 twiliodf = pd.DataFrame()
 global responseArr
 responseArr = [None] * 1000
+twiliodf_lock = threading.Lock()
 
 # configured global var
 server = os.environ.get("serverGFT")
@@ -63,16 +64,17 @@ class serverFunct():
                 data = [list(row) for row in result]
 
                 global twiliodf
-                if twiliodf is not None and not twiliodf.empty and len(data) != 0 :
-                    new_data_df = pd.DataFrame(data, columns=columns)
-                    twiliodf = pd.concat([twiliodf, new_data_df], ignore_index=True)
-                else:                    
-                    twiliodf = pd.DataFrame(data, columns=columns)
-                update_query = '''
-                    UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
-                    SET Processed = 1
-                    WHERE Processed <> 1;
-                '''
+                with twiliodf_lock:
+                    if twiliodf is not None and not twiliodf.empty and len(data) != 0 :
+                        new_data_df = pd.DataFrame(data, columns=columns)
+                        twiliodf = pd.concat([twiliodf, new_data_df], ignore_index=True)
+                    else:                    
+                        twiliodf = pd.DataFrame(data, columns=columns)
+                    update_query = '''
+                        UPDATE [GFT].[dbo].[MR_Staging_TwilioOnCall]
+                        SET Processed = 1
+                        WHERE Processed <> 1;
+                    '''
 
                 cursor.execute(update_query)
                 conn.commit()
@@ -158,30 +160,33 @@ app = Flask(__name__)
 @app.route('/')
 def main_page():
     global twiliodf
-    if len(twiliodf) > 0:
-        table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
-        return render_template('html/main.html', table_html=table_html)
-    else:
-        return render_template('html/mainNoData.html')
+    with twiliodf_lock:
+        if len(twiliodf) > 0:
+            table_html = twiliodf.to_html(classes='table table-bordered table-hover', index=False)
+            return render_template('html/main.html', table_html=table_html)
+        else:
+            return render_template('html/mainNoData.html')
 
 
 # initial thread for tehnician oncall
 @app.route('/visual/progress', methods=['GET'])
 def visualprogress():
     global twiliodf
-    return render_template('html/call.html', twiliodf=twiliodf)
+    with twiliodf_lock:
+        return render_template('html/call.html', twiliodf=twiliodf)
 
 def progress():
     threads = []
     global twiliodf
-    if not twiliodf.empty:
-        twiliodf_filtered = twiliodf[twiliodf['status'] == 0]
-        for index, row in twiliodf_filtered.iterrows():
-            assign_thread = threading.Thread(target=assignCall, args=(row,))
-            threads.append(assign_thread)
-            assign_thread.start()
-    else:
-        print("Empty dataframe")
+    with twiliodf_lock:
+        if not twiliodf.empty:
+            twiliodf_filtered = twiliodf[twiliodf['status'] == 0]
+            for index, row in twiliodf_filtered.iterrows():
+                assign_thread = threading.Thread(target=assignCall, args=(row,))
+                threads.append(assign_thread)
+                assign_thread.start()
+        else:
+            print("Empty dataframe")
 
     # return render_template('html/call.html')
 
@@ -200,7 +205,8 @@ def assignCall(row):
     escalationData = ()
     
     global twiliodf
-    twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 1
+    with twiliodf_lock:
+        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 1
     while localEscalation <= Max_Escalations:
         if localEscalation == 0:
             yes3CharWord = ''.join(random.choice(string.ascii_lowercase) for _ in range(3))
@@ -219,7 +225,8 @@ def assignCall(row):
                     to=twilio_number,
                     limit=1
                 )
-                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 2
+                with twiliodf_lock:
+                    twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 2
                 
                 message_timestamp_str = message_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 if response:
@@ -236,7 +243,8 @@ def assignCall(row):
                             to=tech_phone_number
                         )
                         responseArr[(int)(ticket_no.split("-")[1])] = None
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
+                        with twiliodf_lock:
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                         serverFunct.updateReport(row, 1, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                         twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                         # end of case
@@ -247,18 +255,20 @@ def assignCall(row):
                 if datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=firstdelaytime):
                     if len(call_timestamps) != 0 and datetime.now(timezone.utc) - message_timestamp > timedelta(minutes=escalation_time):
                         # text technician
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
+                        with twiliodf_lock:
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 4
                         message = client.messages.create(
                             body=f" We have elevate the call to your manager due to overtime.",
                             from_=twilio_number,
                             to=tech_phone_number
                         )
                         localEscalation += 1
-                        serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
+                        # serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], localEscalation+1)
                         break
                     # call repeat or datetime.now(timezone.utc) - call_timestamps[0] == timedelta(minutes=10)
                     if len(call_timestamps) == 0:
-                        twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
+                        with twiliodf_lock:
+                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 3
                         call_timestamps.append(datetime.now(timezone.utc))
                         params = messageEditor.replace_numbers_with_spoken(row.get('voice_Message', ''))
                         encoded_params = quote(params)
@@ -284,10 +294,11 @@ def assignCall(row):
                         )
                     start_time = time.time()
                     while True:
-                        if (twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] == 4).any():
-                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
-                        else:
-                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
+                        with twiliodf_lock:
+                            if (twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] == 4).any():
+                                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 5
+                            else:
+                                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 6
                         time.sleep(5)
                         print("escalated",(int)(ticket_no.split("-")[1]), responseArr[(int)(ticket_no.split("-")[1])], time.time() - start_time)
                         if (responseArr[(int)(ticket_no.split("-")[1])] == 1):
@@ -298,7 +309,8 @@ def assignCall(row):
                                 # to=tech_phone_number,
                             )
                             responseArr[(int)(ticket_no.split("-")[1])] = None
-                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
+                            with twiliodf_lock:
+                                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                             serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                             twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
@@ -333,7 +345,8 @@ def assignCall(row):
                                 to=escalationData.Phone
                             )
                             responseArr[(int)(ticket_no.split("-")[1])] = None
-                            twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
+                            with twiliodf_lock:
+                                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 99
                             serverFunct.updateReport(row, 2, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                             twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                             # end of case
@@ -342,7 +355,8 @@ def assignCall(row):
                             print("never text before", datetime.now(timezone.utc) - message_timestamp, message_timestamp_str)
                 localEscalation += 1
             else:
-                twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 7
+                with twiliodf_lock:
+                    twiliodf.loc[twiliodf['ticket_no'] == ticket_no, 'status'] = 7
                 serverFunct.updateReport(row, 3, message_timestamp, latest_response.date_sent.strftime("%Y-%m-%d %H:%M:%S"), row['ticket_no'], 0)
                 twiliodf = twiliodf.drop(twiliodf[twiliodf['ticket_no'] == ticket_no].index)
                 return
